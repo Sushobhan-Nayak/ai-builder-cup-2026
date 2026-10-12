@@ -1,0 +1,35 @@
+# Every external value comes from a live source listed here. No static or cached web data.
+lane_a_google_search:
+  agent: live_web
+  max_search_queries_per_request: 3
+  max_requests_per_user_per_day: 100
+  store: user_chat_history_only        
+  max_age: {news: 24h, market_events: 24h, prices: 1d, competitor: 7d, regulation: 30d}
+lane_b_feeds:
+  weather_alerts:
+    provider: google_weather_api       
+    poll: 15m
+    max_age: 45m                       
+    max_cache: 1h                      
+    coverage_gaps:                     
+      IN: imd_cap                      
+      ID: bmkg_cap                     
+      MY: metmalaysia_cap
+      CN: cma_cap                      
+  news_events:
+    provider: gdelt                    
+    poll: 15m
+    max_age: 24h
+    rate_limit: 1 request / 5 s        
+    query_strategy: one OR-combined query per watch group
+  fx_rates:
+    provider: ecb_reference_rates      
+    poll: 1d
+    max_age: 1 business day
+  commodity_prices:
+    provider: null                     
+    max_age: 1 trading day
+  grid_carbon_intensity:
+    provider: electricity_maps_api     
+    poll: 1h
+    max_age: 2h

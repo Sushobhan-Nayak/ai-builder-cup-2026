@@ -1,0 +1,14 @@
+# Bundle rule: an option is approved with ONE click by a user who (a) is scoped to the option's plants and
+# (b) holds an approver role for EVERY action in the option. 
+autonomy:
+  create_work_order:       {level: L2, approvers: [maintenance, plant_manager]}
+  reserve_spare_part:      {level: L3, requires: approved_work_order}     
+  draft_purchase_order:    {level: L2, approvers: [buyer],
+                            auto_if: {preferred_supplier: true, item_class: C, max_value_usd: 5000}}   
+  reschedule_production:   {level: L2, approvers: [planner, plant_manager, maintenance]}
+  notify_customer:         {level: L2, approvers: [sales]}                
+  change_process_setpoint: {level: L1}                                    
+  load_shift_energy:       {level: L2, approvers: [plant_manager]}
+global:
+  kill_switch: false
+  max_auto_actions_per_hour: 20

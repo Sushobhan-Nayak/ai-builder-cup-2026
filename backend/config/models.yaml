@@ -1,0 +1,14 @@
+# Logical model registry — change IDs here only.
+location: global                # Gemini 3.x on Agent Platform: global / us / eu endpoints
+models:
+  DEFAULT: {id: gemini-3.8-flash, thinking_level: medium, temperature: 0.2, fallback: gemini-3.6-flash}
+  CHAT:    {id: gemini-3.8-flash, thinking_level: low,    temperature: 0.3}
+  DEEP:    {id: gemini-3.1-pro-preview, thinking_level: high, fallback: gemini-3.8-flash}
+  FAST:    {id: gemini-3.5-flash-lite, thinking_level: minimal, temperature: 0.0, fallback: gemini-3.1-flash-lite}
+  VISION:  {id: gemini-3.8-flash, media_resolution: high, temperature: 0.0}
+  LIVE:    {id: gemini-3.8-live, voice: Puck, fallback: gemini-3.8-live-extended-thinking}
+  EMBED:   {id: gemini-embedding-2, dims: 768}
+  IMAGE:   {id: gemini-3.1-flash-image}
+bigquery_ai:
+  endpoint: "https://aiplatform.googleapis.com/v1/projects/${PROJECT_ID}/locations/global/publishers/google/models/gemini-3.5-flash-lite"
+  timesfm_model: "TimesFM 2.5"

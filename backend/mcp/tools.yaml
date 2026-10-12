@@ -1,0 +1,55 @@
+sources:
+  bq:
+    kind: bigquery
+    project: ${PROJECT_ID}
+    location: asia-southeast1
+    readOnly: true
+    allowedDatasets: [gold, kg, ref]
+
+tools:
+  get_asset_sensor_window:
+    kind: bigquery-sql
+    source: bq
+    description: "Return 1-minute aggregated sensor values for an asset over the last N minutes."
+    parameters:
+      - {name: asset_id, type: string, description: "Asset ID e.g. PNQ-CNC-07"}
+      - {name: minutes, type: integer, description: "Lookback window in minutes (max 1440)"}
+      - {name: allowed_plants, type: array, items: {type: string}, description: "Injected by gateway"}
+    statement: |
+      SELECT ts_min, metric, avg_value, max_value FROM gold.v_telemetry_1m
+      WHERE asset_id = @asset_id AND plant_id IN UNNEST(@allowed_plants)
+        AND ts_min > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL LEAST(@minutes, 1440) MINUTE)
+      ORDER BY ts_min
+
+  graph_blast_radius_supplier:
+    kind: bigquery-sql
+    source: bq
+    description: "Downstream impact (parts, products, open orders, customers, revenue) of a supplier."
+    parameters:
+      - {name: supplier_id, type: string, description: "Supplier ID e.g. SUP-FORMOSA"}
+      - {name: allowed_plants, type: array, items: {type: string}, description: "Injected by gateway"}
+    statement: |
+      SELECT part_id, sku_id, so_id, due_date, value_usd, customer
+      FROM GRAPH_TABLE(kg.mfg_graph
+        MATCH (s:Supplier {supplier_id: @supplier_id})-[:SUPPLIES]->(p:Part)-[:COMPONENT_OF]->(prod:Product)
+              <-[:FOR_PRODUCT]-(so:SalesOrder)<-[:ORDERS]-(c:Customer)
+        WHERE so.status IN ('OPEN','CONFIRMED') AND prod.plant_id IN UNNEST(@allowed_plants)
+        RETURN p.part_id AS part_id, prod.sku_id AS sku_id, so.so_id AS so_id,
+               so.due_date AS due_date, so.value_usd AS value_usd, c.name AS customer)
+      ORDER BY due_date
+
+  get_spare_stock:
+    kind: bigquery-sql
+    source: bq
+    description: "Check inventory levels for a specific spare part across allowed plants."
+    parameters:
+      - {name: part_id, type: string, description: "Part ID e.g. BRG-6205"}
+      - {name: allowed_plants, type: array, items: {type: string}, description: "Injected by gateway"}
+    statement: |
+      SELECT plant_id, stock_qty, reserved_qty, location_bin 
+      FROM silver.inventory 
+      WHERE part_id = @part_id AND plant_id IN UNNEST(@allowed_plants)
+
+toolsets:
+  sentinel: [get_asset_sensor_window, get_spare_stock]
+  navigator: [graph_blast_radius_supplier]

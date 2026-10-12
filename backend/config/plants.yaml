@@ -1,0 +1,20 @@
+company: "Nova Drive Components Ltd."
+plants:
+  - id: "PNQ"
+    name: "Pune Plant"
+    location: "Pune, India"
+    main_processes: ["CNC machining", "rotor/stator assembly", "EOL test"]
+    key_products: ["Traction motor assemblies"]
+    timezone: "Asia/Kolkata"
+  - id: "RYG"
+    name: "Rayong Plant"
+    location: "Rayong, Thailand"
+    main_processes: ["High-pressure die casting", "CNC", "painting"]
+    key_products: ["Inverter and motor housings"]
+    timezone: "Asia/Bangkok"
+  - id: "NGO"
+    name: "Nagoya Plant"
+    location: "Nagoya, Japan"
+    main_processes: ["Precision gear machining", "heat treatment", "robotic assembly"]
+    key_products: ["e-Axle reduction gearboxes"]
+    timezone: "Asia/Tokyo"
