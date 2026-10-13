@@ -1,7 +1,7 @@
 import os
 from google.cloud import bigquery, firestore, pubsub_v1
 
-PROJECT_ID = os.getenv("PROJECT_ID", "gembaos-prod")
+PROJECT_ID = os.getenv("PROJECT_ID", "deep-atlas-511314-r4")
 
 # Lazy initialization to prevent overhead during container build phases
 _bq_client = None

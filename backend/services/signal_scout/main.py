@@ -12,7 +12,7 @@ from backend.packages.gembaos_core.config import models
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-PROJECT_ID = os.getenv("PROJECT_ID", "gembaos-prod")
+PROJECT_ID = os.getenv("PROJECT_ID", "deep-atlas-511314-r4")
 FAST_MODEL = models.get("FAST", "gemini-3.5-flash-lite")
 
 publisher = pubsub_v1.PublisherClient()

@@ -29,14 +29,26 @@ tools:
       - {name: supplier_id, type: string, description: "Supplier ID e.g. SUP-FORMOSA"}
       - {name: allowed_plants, type: array, items: {type: string}, description: "Injected by gateway"}
     statement: |
-      SELECT part_id, sku_id, so_id, due_date, value_usd, customer
-      FROM GRAPH_TABLE(kg.mfg_graph
-        MATCH (s:Supplier {supplier_id: @supplier_id})-[:SUPPLIES]->(p:Part)-[:COMPONENT_OF]->(prod:Product)
-              <-[:FOR_PRODUCT]-(so:SalesOrder)<-[:ORDERS]-(c:Customer)
-        WHERE so.status IN ('OPEN','CONFIRMED') AND prod.plant_id IN UNNEST(@allowed_plants)
-        RETURN p.part_id AS part_id, prod.sku_id AS sku_id, so.so_id AS so_id,
-               so.due_date AS due_date, so.value_usd AS value_usd, c.name AS customer)
-      ORDER BY due_date
+      SELECT 
+        p.part_id, 
+        prod.sku_id, 
+        so.so_id, 
+        so.due_date, 
+        so.value_usd, 
+        c.name AS customer
+      FROM kg.n_supplier s
+      JOIN kg.e_supplies sup ON s.supplier_id = sup.supplier_id
+      JOIN kg.n_part p ON sup.part_id = p.part_id
+      JOIN kg.e_component_of comp ON p.part_id = comp.part_id
+      JOIN kg.n_product prod ON comp.sku_id = prod.sku_id
+      JOIN kg.e_so_for so_rel ON prod.sku_id = so_rel.sku_id
+      JOIN kg.n_sales_order so ON so_rel.so_id = so.so_id
+      JOIN kg.e_orders ord ON so.so_id = ord.so_id
+      JOIN kg.n_customer c ON ord.customer_id = c.customer_id
+      WHERE s.supplier_id = @supplier_id
+        AND so.status IN ('OPEN','CONFIRMED')
+        AND prod.plant_id IN UNNEST(@allowed_plants)
+      ORDER BY so.due_date
 
   get_spare_stock:
     kind: bigquery-sql

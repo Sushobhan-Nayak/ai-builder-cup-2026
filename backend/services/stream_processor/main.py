@@ -9,7 +9,7 @@ import pandas as pd
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-PROJECT_ID = os.getenv("PROJECT_ID", "gembaos-prod")
+PROJECT_ID = os.getenv("PROJECT_ID", "deep-atlas-511314-r4")
 SUBSCRIPTION_ID = f"projects/{PROJECT_ID}/subscriptions/telemetry.raw-pull"
 ANOMALY_TOPIC = f"projects/{PROJECT_ID}/topics/events.anomaly"
 

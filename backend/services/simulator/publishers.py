@@ -6,7 +6,7 @@ from google.cloud import pubsub_v1
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ID = os.getenv("PROJECT_ID", "gembaos-prod")
+PROJECT_ID = os.getenv("PROJECT_ID", "deep-atlas-511314-r4")
 
 class EventPublisher:
     def __init__(self):

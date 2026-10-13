@@ -1,6 +1,6 @@
 .PHONY: bootstrap seed deploy clean
 
-PROJECT_ID ?= gembaos-prod
+PROJECT_ID ?= deep-atlas-511314-r4
 REGION ?= asia-southeast1
 
 bootstrap:

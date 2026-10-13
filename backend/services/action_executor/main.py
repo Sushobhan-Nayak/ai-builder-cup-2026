@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="GembaOS Action Executor", version="1.4")
 
-PROJECT_ID = os.getenv("PROJECT_ID", "gembaos-prod")
+PROJECT_ID = os.getenv("PROJECT_ID", "deep-atlas-511314-r4")
 db = firestore.Client(project=PROJECT_ID)
 publisher = pubsub_v1.PublisherClient()
 RESULTS_TOPIC = publisher.topic_path(PROJECT_ID, "actions.result")
