@@ -5,6 +5,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from google import genai
 from google.genai import types
 from backend.packages.gembaos_core.config import models
+from backend.packages.gembaos_core.clients import get_genai_client
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -12,7 +13,6 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="GembaOS Live Gateway", version="1.4")
 
 LIVE_MODEL = models.get("LIVE", "gemini-3.8-live")
-client = genai.Client()
 
 SYSTEM_INSTRUCTION = """
 You are Gemba Live, a calm master technician for Nova Drive. Speak in the user's language in short sentences. 
@@ -47,7 +47,7 @@ async def live_session(websocket: WebSocket):
     )
     
     try:
-        async with client.aio.live.connect(model=LIVE_MODEL, config=config) as session:
+        async with get_genai_client().aio.live.connect(model=LIVE_MODEL, config=config) as session:
             # Task to receive audio/video from client and send to Gemini
             async def receive_from_client():
                 async for message in websocket.iter_bytes():

@@ -7,6 +7,7 @@ from google.cloud import bigquery, pubsub_v1
 from google import genai
 from google.genai import types
 from backend.packages.gembaos_core.config import models
+from backend.packages.gembaos_core.clients import get_genai_client
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,7 +21,6 @@ VISION_MODEL = models.get("VISION", "gemini-3.8-flash")
 bq = bigquery.Client(project=PROJECT_ID)
 publisher = pubsub_v1.PublisherClient()
 QUALITY_TOPIC = publisher.topic_path(PROJECT_ID, "events.quality")
-client = genai.Client()
 
 # Curated taxonomy for few-shot prompting
 TAXONOMY = """
@@ -46,7 +46,7 @@ async def handle_eventarc(request: Request):
     logger.info(f"Processing image: {gcs_uri}")
 
     # Stage 1: Fast screen (Flash-Lite)
-    stage1_response = client.models.generate_content(
+    stage1_response = get_genai_client().models.generate_content(
         model=FAST_MODEL,
         contents=[
             "Is there any visible manufacturing defect in this casting? Reply strictly with 'OK' or 'SUSPECT'.",
@@ -61,7 +61,7 @@ async def handle_eventarc(request: Request):
     if "SUSPECT" in stage1_response.text.upper():
         # Stage 2: Deep Few-Shot Reasoning (Gemini 3.8 Flash)
         stage = "Stage 2"
-        stage2_response = client.models.generate_content(
+        stage2_response = get_genai_client().models.generate_content(
             model=VISION_MODEL,
             contents=[
                 TAXONOMY,

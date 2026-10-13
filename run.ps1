@@ -23,6 +23,14 @@ switch ($Target.ToLower()) {
         Write-Host "Starting GembaOS Orchestrator on http://localhost:8080 ..." -ForegroundColor Cyan
         uvicorn backend.services.agents.orchestrator.main:app --port 8080 --reload
     }
+    "gateway" {
+        Write-Host "Starting GembaOS API Gateway on http://localhost:8000 ..." -ForegroundColor Cyan
+        uvicorn backend.services.api_gateway.main:app --port 8000 --reload
+    }
+    "optimizer" {
+        Write-Host "Starting GembaOS Optimizer on http://localhost:8084 ..." -ForegroundColor Cyan
+        uvicorn backend.services.optimizer.main:app --port 8084 --reload
+    }
     "clean" {
         Write-Host "Cleaning local build artifacts..." -ForegroundColor Yellow
         Get-ChildItem -Path . -Include __pycache__, .pytest_cache -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
@@ -33,8 +41,10 @@ switch ($Target.ToLower()) {
         Write-Host "Targets:"
         Write-Host "  bootstrap    - Provision GCP APIs, BigQuery datasets, Pub/Sub topics"
         Write-Host "  seed         - Apply BigQuery schemas and Property Graph DDL"
+        Write-Host "  gateway      - Run API Gateway BFF locally (port 8000)"
         Write-Host "  simulator    - Run factory simulation service locally (port 8082)"
         Write-Host "  orchestrator - Run orchestrator service locally (port 8080)"
+        Write-Host "  optimizer    - Run CP-SAT scheduling & CTP service locally (port 8084)"
         Write-Host "  clean        - Remove local cache artifacts"
     }
 }

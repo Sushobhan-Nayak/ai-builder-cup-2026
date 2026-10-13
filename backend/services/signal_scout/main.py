@@ -8,6 +8,7 @@ from google.cloud import pubsub_v1
 from google import genai
 from google.genai import types
 from backend.packages.gembaos_core.config import models
+from backend.packages.gembaos_core.clients import get_genai_client
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,7 +18,6 @@ FAST_MODEL = models.get("FAST", "gemini-3.5-flash-lite")
 
 publisher = pubsub_v1.PublisherClient()
 SIGNALS_TOPIC = publisher.topic_path(PROJECT_ID, "signals.external")
-client = genai.Client()
 
 def publish_signal(signal_data: dict):
     payload = {
@@ -47,7 +47,7 @@ async def poll_weather_alerts():
         {{type: "weather", entities: [{{type: "region", id: "str"}}], severity: int(1-5), probability: float(0-1), time_horizon_h: int, summary: "str"}}
         Alert Text: {alert['headline']} - {alert['desc']}
         """
-        response = client.models.generate_content(
+        response = get_genai_client().models.generate_content(
             model=FAST_MODEL,
             contents=prompt,
             config=types.GenerateContentConfig(response_mime_type="application/json")
