@@ -31,6 +31,9 @@ switch ($Target.ToLower()) {
         Write-Host "Starting GembaOS Optimizer on http://localhost:8084 ..." -ForegroundColor Cyan
         uvicorn backend.services.optimizer.main:app --port 8084 --reload
     }
+    "deploy" {
+        & "$PSScriptRoot\infra\scripts\deploy.ps1" -ProjectId $ProjectId
+    }
     "clean" {
         Write-Host "Cleaning local build artifacts..." -ForegroundColor Yellow
         Get-ChildItem -Path . -Include __pycache__, .pytest_cache -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
@@ -45,6 +48,7 @@ switch ($Target.ToLower()) {
         Write-Host "  simulator    - Run factory simulation service locally (port 8082)"
         Write-Host "  orchestrator - Run orchestrator service locally (port 8080)"
         Write-Host "  optimizer    - Run CP-SAT scheduling & CTP service locally (port 8084)"
+        Write-Host "  deploy       - Build and deploy backend to Google Cloud Run"
         Write-Host "  clean        - Remove local cache artifacts"
     }
 }
