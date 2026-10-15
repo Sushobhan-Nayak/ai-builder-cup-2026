@@ -134,26 +134,256 @@ async def get_plant(plant_id: str):
     raise HTTPException(status_code=404, detail="Plant not found")
 
 
-@app.get("/v1/kpis")
-async def get_kpis(scope: str = "global"):
-    """Returns live manufacturing KPIs (OEE, OTIF, MTBF, CO2, Downtime)."""
-    # Baseline manufacturing KPIs per Section 19
-    return {
-        "scope": scope,
-        "as_of": datetime.utcnow().isoformat(),
+# Production Lines Mapping per Section 12.2
+PLANT_LINES_MAP = {
+    "PNQ": [
+        {
+            "line_id": "PNQ-L1",
+            "name": "e-Powertrain Machining Line",
+            "plant_id": "PNQ",
+            "status": "DEGRADED",
+            "oee_pct": 74.2,
+            "target_oee_pct": 85.0,
+            "assets": ["PNQ-CNC-07", "PNQ-CNC-08"],
+            "current_product": "TM-300 Stator/Rotor Casing",
+            "bottleneck_asset": "PNQ-CNC-07"
+        },
+        {
+            "line_id": "PNQ-L2",
+            "name": "Motor Rotor & Stator Assembly Line",
+            "plant_id": "PNQ",
+            "status": "RUNNING",
+            "oee_pct": 82.5,
+            "target_oee_pct": 85.0,
+            "assets": ["PNQ-ASM-01", "PNQ-ASM-02"],
+            "current_product": "TM-300 Final Assembly",
+            "bottleneck_asset": None
+        }
+    ],
+    "RYG": [
+        {
+            "line_id": "RYG-L1",
+            "name": "High-Pressure Die Casting Line 1",
+            "plant_id": "RYG",
+            "status": "RUNNING",
+            "oee_pct": 83.8,
+            "target_oee_pct": 85.0,
+            "assets": ["RYG-DC-01", "RYG-DC-02"],
+            "current_product": "Inverter Housing INV-200",
+            "bottleneck_asset": None
+        },
+        {
+            "line_id": "RYG-L2",
+            "name": "Housing Finish & Painting Line 2",
+            "plant_id": "RYG",
+            "status": "WARNING",
+            "oee_pct": 78.6,
+            "target_oee_pct": 85.0,
+            "assets": ["RYG-CNC-03", "RYG-PNT-01"],
+            "current_product": "INV-200 Surface Finish",
+            "bottleneck_asset": "RYG-PNT-01"
+        }
+    ],
+    "NGO": [
+        {
+            "line_id": "NGO-L1",
+            "name": "Precision Gear Grinding Line",
+            "plant_id": "NGO",
+            "status": "RUNNING",
+            "oee_pct": 90.2,
+            "target_oee_pct": 88.0,
+            "assets": ["NGO-GR-01", "NGO-GR-02"],
+            "current_product": "e-Axle Reduction Gears",
+            "bottleneck_asset": None
+        },
+        {
+            "line_id": "NGO-L2",
+            "name": "Induction Heat Treatment Line",
+            "plant_id": "NGO",
+            "status": "RUNNING",
+            "oee_pct": 88.8,
+            "target_oee_pct": 88.0,
+            "assets": ["NGO-FUR-01", "NGO-FUR-02"],
+            "current_product": "Reduction Pinions",
+            "bottleneck_asset": None
+        }
+    ]
+}
+
+
+@app.get("/v1/plants/{plant_id}/lines")
+async def get_plant_lines(plant_id: str):
+    """List operational production lines and live line health for a plant."""
+    pid = plant_id.upper()
+    if pid in PLANT_LINES_MAP:
+        return {"plant_id": pid, "lines": PLANT_LINES_MAP[pid]}
+    raise HTTPException(status_code=404, detail=f"Plant '{plant_id}' not found")
+
+
+# Plant-specific baseline KPI profiles reflecting GembaOS operational scenarios
+PLANT_KPIS_MAP = {
+    "GLOBAL": {
+        "scope": "global",
+        "plant_id": "ALL",
+        "plant_name": "Nova Drive Global Network",
         "kpis": {
-            "oee_pct": 78.4,
-            "oee_trend": "-1.2%",
-            "otif_pct": 94.2,
+            "oee_pct": 82.5,
+            "oee_trend": "-0.8%",
+            "otif_pct": 94.4,
             "otif_target": 98.0,
-            "mtbf_hours": 142.0,
-            "mttr_hours": 2.4,
+            "mtbf_hours": 173.0,
+            "mttr_hours": 2.2,
+            "scrap_rate_pct": 2.3,
             "revenue_at_risk_usd": 793500.0,
             "co2_intensity_kg_per_unit": 18.2,
+            "active_anomalies_count": 2,
+            "pending_decisions_count": 2,
+            "production_rate_units_day": 1420
+        }
+    },
+    "PNQ": {
+        "scope": "plant:PNQ",
+        "plant_id": "PNQ",
+        "plant_name": "Pune Plant (India)",
+        "key_focus": "e-Powertrain Assembly & Spindle Degradation",
+        "kpis": {
+            "oee_pct": 76.8,
+            "oee_trend": "-2.4%",
+            "otif_pct": 91.5,
+            "otif_target": 98.0,
+            "mtbf_hours": 118.0,
+            "mttr_hours": 3.2,
+            "scrap_rate_pct": 1.8,
+            "revenue_at_risk_usd": 517500.0,
+            "co2_intensity_kg_per_unit": 21.4,
             "active_anomalies_count": 1,
-            "pending_decisions_count": 1
+            "pending_decisions_count": 1,
+            "production_rate_units_day": 450
+        }
+    },
+    "RYG": {
+        "scope": "plant:RYG",
+        "plant_id": "RYG",
+        "plant_name": "Rayong Plant (Thailand)",
+        "key_focus": "Die Casting Porosity & Quality Control",
+        "kpis": {
+            "oee_pct": 81.2,
+            "oee_trend": "-1.5%",
+            "otif_pct": 93.8,
+            "otif_target": 98.0,
+            "mtbf_hours": 156.0,
+            "mttr_hours": 2.1,
+            "scrap_rate_pct": 4.6,
+            "revenue_at_risk_usd": 185000.0,
+            "co2_intensity_kg_per_unit": 19.8,
+            "active_anomalies_count": 1,
+            "pending_decisions_count": 1,
+            "production_rate_units_day": 520
+        }
+    },
+    "NGO": {
+        "scope": "plant:NGO",
+        "plant_id": "NGO",
+        "plant_name": "Nagoya Plant (Japan)",
+        "key_focus": "High-Precision Machining & TOU Load Shifting",
+        "kpis": {
+            "oee_pct": 89.5,
+            "oee_trend": "+0.6%",
+            "otif_pct": 98.2,
+            "otif_target": 98.0,
+            "mtbf_hours": 245.0,
+            "mttr_hours": 1.2,
+            "scrap_rate_pct": 0.5,
+            "revenue_at_risk_usd": 91000.0,
+            "co2_intensity_kg_per_unit": 13.4,
+            "active_anomalies_count": 0,
+            "pending_decisions_count": 0,
+            "production_rate_units_day": 450
         }
     }
+}
+
+
+@app.get("/v1/kpis")
+async def get_kpis(scope: Optional[str] = "global", plant_id: Optional[str] = None):
+    """Returns manufacturing KPIs computed dynamically from BigQuery (or calibrated baseline fallback)."""
+    # Determine requested plant / scope target
+    target_key = "GLOBAL"
+    if plant_id:
+        target_key = plant_id.upper()
+    elif scope:
+        cleaned = scope.upper()
+        if "PLANT:" in cleaned:
+            target_key = cleaned.split("PLANT:")[1].strip()
+        elif cleaned in ["PNQ", "RYG", "NGO"]:
+            target_key = cleaned
+        elif cleaned in ["GLOBAL", "ALL"]:
+            target_key = "GLOBAL"
+
+    # Attempt live calculation via BigQuery
+    bq = get_bq()
+    if bq:
+        try:
+            from google.cloud import bigquery
+            plant_filter = "AND plant_id = @plant_id" if target_key != "GLOBAL" else ""
+            query = f"""
+            WITH plant_states AS (
+              SELECT
+                SUM(CASE WHEN state = 'RUNNING' THEN TIMESTAMP_DIFF(ts_end, ts_start, SECOND) ELSE 0 END) AS operating_seconds,
+                SUM(TIMESTAMP_DIFF(ts_end, ts_start, SECOND)) AS total_seconds,
+                SUM(CASE WHEN state = 'DOWN' THEN TIMESTAMP_DIFF(ts_end, ts_start, SECOND) ELSE 0 END) AS down_seconds,
+                COUNTIF(state = 'DOWN') AS down_events,
+                SUM(good_count) AS total_good,
+                SUM(reject_count) AS total_reject,
+                SUM(ideal_cycle_s * (good_count + reject_count)) AS ideal_seconds
+              FROM `{PROJECT_ID}.silver.machine_states`
+              WHERE ts_start >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
+              {plant_filter}
+            )
+            SELECT
+              ROUND(SAFE_DIVIDE(operating_seconds, total_seconds) * 100, 1) AS availability_pct,
+              ROUND(SAFE_DIVIDE(ideal_seconds, operating_seconds) * 100, 1) AS performance_pct,
+              ROUND(SAFE_DIVIDE(total_good, total_good + total_reject) * 100, 1) AS quality_pct,
+              ROUND(
+                (SAFE_DIVIDE(operating_seconds, total_seconds)) *
+                (SAFE_DIVIDE(ideal_seconds, operating_seconds)) *
+                (SAFE_DIVIDE(total_good, total_good + total_reject)) * 100, 1
+              ) AS oee_pct,
+              ROUND(SAFE_DIVIDE(operating_seconds / 3600.0, GREATEST(down_events, 1)), 1) AS mtbf_hours,
+              ROUND(SAFE_DIVIDE(down_seconds / 3600.0, GREATEST(down_events, 1)), 1) AS mttr_hours,
+              ROUND(SAFE_DIVIDE(total_reject, total_good + total_reject) * 100, 1) AS scrap_rate_pct
+            FROM plant_states
+            """
+            params = []
+            if target_key != "GLOBAL":
+                params.append(bigquery.ScalarQueryParameter("plant_id", "STRING", target_key))
+
+            job_config = bigquery.QueryJobConfig(query_parameters=params)
+            rows = list(bq.query(query, job_config=job_config).result())
+            if rows and rows[0].oee_pct is not None:
+                r = rows[0]
+                base_profile = PLANT_KPIS_MAP.get(target_key, PLANT_KPIS_MAP["GLOBAL"]).copy()
+                kpis = base_profile["kpis"].copy()
+                kpis["oee_pct"] = float(r.oee_pct)
+                kpis["availability_pct"] = float(r.availability_pct or 0.0)
+                kpis["performance_pct"] = float(r.performance_pct or 0.0)
+                kpis["quality_pct"] = float(r.quality_pct or 0.0)
+                kpis["mtbf_hours"] = float(r.mtbf_hours or 0.0)
+                kpis["mttr_hours"] = float(r.mttr_hours or 0.0)
+                kpis["scrap_rate_pct"] = float(r.scrap_rate_pct or 0.0)
+                
+                base_profile["kpis"] = kpis
+                base_profile["data_source"] = "bigquery_live"
+                base_profile["as_of"] = datetime.utcnow().isoformat()
+                return base_profile
+        except Exception as e:
+            logger.warning(f"Error querying live BigQuery KPIs: {e}")
+
+    # Fallback to calibrated baseline profile if BQ tables are empty or query fails
+    kpi_profile = PLANT_KPIS_MAP.get(target_key, PLANT_KPIS_MAP["GLOBAL"]).copy()
+    kpi_profile["data_source"] = "baseline_contract"
+    kpi_profile["as_of"] = datetime.utcnow().isoformat()
+    return kpi_profile
 
 
 # ==========================================
@@ -266,8 +496,16 @@ async def get_asset_health(asset_id: str):
 # 4. Insights & Decision Inbox
 # ==========================================
 @app.get("/v1/insights")
-async def list_insights(status: str = "new", limit: int = 20):
-    """Feed of operational insights generated by Sentinel, Scout, and Inspector."""
+async def list_insights(
+    status: str = "new",
+    limit: int = 20,
+    plant: Optional[str] = None,
+    plant_id: Optional[str] = None,
+    domain: Optional[str] = None
+):
+    """Feed of operational insights generated by Sentinel, Scout, Inspector, and Verdant."""
+    filter_plant = (plant_id or plant or "").upper()
+
     fs = get_firestore()
     live_insights = []
     if fs:
@@ -276,47 +514,90 @@ async def list_insights(status: str = "new", limit: int = 20):
             for doc in docs:
                 d = doc.to_dict()
                 if status == "all" or d.get("status") == status:
-                    live_insights.append(d)
+                    if not filter_plant or filter_plant in [p.upper() for p in d.get("plant_ids", [])]:
+                        if not domain or d.get("domain") == domain:
+                            live_insights.append(d)
         except Exception as e:
             logger.warning(f"Error fetching insights from Firestore: {e}")
 
     if live_insights:
         return {"insights": live_insights}
 
-    return {
-        "insights": [
-            {
-                "id": "ins_anom_cnc07",
-                "ts": (datetime.utcnow() - timedelta(minutes=14)).isoformat(),
-                "plant_ids": ["PNQ"],
-                "domain": "maintenance",
-                "severity": "high",
-                "title": "CNC-07 Drive-End Bearing Spalling Detected",
-                "summary": "RMS vibration breach 2.82 mm/s with 82% confidence of outer-race fatigue. P10 RUL is 26.5 hours.",
-                "entities": [{"type": "asset", "id": "PNQ-CNC-07"}],
-                "confidence": 0.88,
-                "impact": {"usd": 50000.0, "downtime_h": 4.0, "co2_kg": 0.0},
-                "evidence_ids": ["ev_sql_101", "ev_opt_1"],
-                "agent": "sentinel",
-                "status": "new"
-            },
-            {
-                "id": "ins_wth_haikui",
-                "ts": (datetime.utcnow() - timedelta(minutes=28)).isoformat(),
-                "plant_ids": ["PNQ", "RYG", "NGO"],
-                "domain": "supply",
-                "severity": "critical",
-                "title": "Typhoon Haikui-2 Warning — Formosa Supplier Disruption",
-                "summary": "Category 4 typhoon landfall near Hsinchu within 48h. Supplier Formosa disrupted, impacting stator supply for TM-300.",
-                "entities": [{"type": "supplier", "id": "SUP-FORMOSA"}, {"type": "sku", "id": "TM-300"}],
-                "confidence": 0.95,
-                "impact": {"usd": 793500.0, "downtime_h": 0.0, "co2_kg": 4600.0},
-                "evidence_ids": ["ev_gql_blast", "ev_sql_alt"],
-                "agent": "scout",
-                "status": "new"
-            }
-        ]
-    }
+    # Baseline multi-plant operational insights per Section 6
+    all_seed_insights = [
+        {
+            "id": "ins_anom_cnc07",
+            "ts": (datetime.utcnow() - timedelta(minutes=14)).isoformat(),
+            "plant_ids": ["PNQ"],
+            "domain": "maintenance",
+            "severity": "high",
+            "title": "CNC-07 Drive-End Bearing Spalling Detected",
+            "summary": "RMS vibration breach 2.82 mm/s with 82% confidence of outer-race fatigue. P10 RUL is 26.5 hours.",
+            "entities": [{"type": "asset", "id": "PNQ-CNC-07"}],
+            "confidence": 0.88,
+            "impact": {"usd": 50000.0, "downtime_h": 4.0, "co2_kg": 0.0},
+            "evidence_ids": ["ev_sql_101", "ev_opt_1"],
+            "agent": "sentinel",
+            "status": "new"
+        },
+        {
+            "id": "ins_qc_porosity_ryg",
+            "ts": (datetime.utcnow() - timedelta(minutes=21)).isoformat(),
+            "plant_ids": ["RYG"],
+            "domain": "quality",
+            "severity": "high",
+            "title": "Die Casting Porosity Surge on RYG-L2",
+            "summary": "Visual inspection detected 4.6% porosity defect cluster on inverter housings. Correlated to 12°C mold cooling line drift.",
+            "entities": [{"type": "line", "id": "RYG-L2"}, {"type": "asset", "id": "RYG-DC-01"}],
+            "confidence": 0.91,
+            "impact": {"usd": 64000.0, "downtime_h": 0.0, "co2_kg": 1200.0},
+            "evidence_ids": ["ev_img_porosity_01", "ev_rca_fishbone"],
+            "agent": "inspector",
+            "status": "new"
+        },
+        {
+            "id": "ins_nrg_loadshift",
+            "ts": (datetime.utcnow() - timedelta(minutes=45)).isoformat(),
+            "plant_ids": ["NGO"],
+            "domain": "sustainability",
+            "severity": "medium",
+            "title": "TOU Peak Tariff Shifting Opportunity for NGO Induction Furnaces",
+            "summary": "Automated schedule shift from peak tariff (18:00-22:00) to off-peak (23:00-06:00) saves $680/day and avoids 1,820 kg CO2.",
+            "entities": [{"type": "asset", "id": "NGO-FUR-01"}, {"type": "asset", "id": "NGO-FUR-02"}],
+            "confidence": 0.96,
+            "impact": {"usd": 18200.0, "downtime_h": 0.0, "co2_kg": -1820.0},
+            "evidence_ids": ["ev_opt_loadshift"],
+            "agent": "verdant",
+            "status": "new"
+        },
+        {
+            "id": "ins_wth_haikui",
+            "ts": (datetime.utcnow() - timedelta(minutes=28)).isoformat(),
+            "plant_ids": ["PNQ", "RYG", "NGO"],
+            "domain": "supply",
+            "severity": "critical",
+            "title": "Typhoon Haikui-2 Warning — Formosa Supplier Disruption",
+            "summary": "Category 4 typhoon landfall near Hsinchu within 48h. Supplier Formosa disrupted, impacting stator supply for TM-300.",
+            "entities": [{"type": "supplier", "id": "SUP-FORMOSA"}, {"type": "sku", "id": "TM-300"}],
+            "confidence": 0.95,
+            "impact": {"usd": 793500.0, "downtime_h": 0.0, "co2_kg": 4600.0},
+            "evidence_ids": ["ev_gql_blast", "ev_sql_alt"],
+            "agent": "scout",
+            "status": "new"
+        }
+    ]
+
+    filtered = []
+    for ins in all_seed_insights:
+        if status != "all" and ins.get("status") != status:
+            continue
+        if filter_plant and filter_plant not in ins.get("plant_ids", []):
+            continue
+        if domain and ins.get("domain") != domain:
+            continue
+        filtered.append(ins)
+
+    return {"insights": filtered[:limit]}
 
 
 @app.get("/v1/value-ledger")
