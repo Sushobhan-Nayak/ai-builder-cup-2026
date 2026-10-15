@@ -77,18 +77,22 @@ interface PlantMapProps {
   className?: string;
 }
 
+const DEFAULT_MAPS_KEY = "AIzaSyA3ZGIMrJCh6J1f7ST8B_yqo97Xbnv_cZ8";
+
 export function PlantMap({ plants, className }: PlantMapProps) {
   const { selectedPlant, setSelectedPlant } = useAppStore();
   const mapRef = useRef<HTMLDivElement>(null);
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
-  const [mapEngine, setMapEngine] = useState<"google" | "vector">("vector");
+  const [mapEngine, setMapEngine] = useState<"google" | "vector">("google");
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
-  const [activeKey, setActiveKey] = useState<string>("");
+  const [activeKey, setActiveKey] = useState<string>(
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || DEFAULT_MAPS_KEY
+  );
   const [keyInput, setKeyInput] = useState<string>("");
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [keyError, setKeyError] = useState<string | null>(null);
 
-  // 1. Initial key detection (localStorage -> build-time env -> runtime API)
+  // 1. Initial key detection (localStorage -> build-time env -> runtime API -> project key)
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -112,9 +116,13 @@ export function PlantMap({ plants, className }: PlantMapProps) {
       .then((data) => {
         if (data?.key) {
           setActiveKey(data.key);
+        } else {
+          setActiveKey(DEFAULT_MAPS_KEY);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setActiveKey(DEFAULT_MAPS_KEY);
+      });
   }, []);
 
   // 2. Load Google Maps JS SDK when key is present
@@ -690,31 +698,14 @@ export function PlantMap({ plants, className }: PlantMapProps) {
 
         {/* Engine Switcher / Indicator */}
         <div className="flex items-center gap-1.5 bg-base-300/90 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-lg text-[10px]">
-          {googleMapsLoaded ? (
-            <button
-              onClick={() => setMapEngine(mapEngine === "google" ? "vector" : "google")}
-              className="flex items-center gap-1.5 font-mono font-medium text-primary hover:underline cursor-pointer"
-              title="Toggle between Google Maps JS API and Tactical Vector Digital Twin"
-            >
-              <Navigation className="w-3 h-3" />
-              <span>{mapEngine === "google" ? "Google Maps (Active)" : "Switch to Google Maps"}</span>
-            </button>
-          ) : (
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 font-mono text-[10px] text-base-content/70">
-                <Sparkles className="w-2.5 h-2.5 text-primary" />
-                <span>Tactical GeoTwin</span>
-              </span>
-              <button
-                onClick={() => setShowKeyModal(true)}
-                className="flex items-center gap-1 text-[10px] text-primary hover:text-primary-focus font-medium bg-primary/10 hover:bg-primary/20 px-1.5 py-0.5 rounded border border-primary/30 transition-colors cursor-pointer"
-                title="Connect Google Maps JavaScript API Key"
-              >
-                <Key className="w-2.5 h-2.5" />
-                <span>Connect Google Maps</span>
-              </button>
-            </div>
-          )}
+          <button
+            onClick={() => setMapEngine(mapEngine === "google" ? "vector" : "google")}
+            className="flex items-center gap-1.5 font-mono font-medium text-primary hover:underline cursor-pointer"
+            title="Toggle between Google Maps JS API and Tactical Vector Digital Twin"
+          >
+            <Navigation className="w-3 h-3 text-primary" />
+            <span>{mapEngine === "google" ? "Google Maps (Active)" : "Tactical Vector Twin"}</span>
+          </button>
         </div>
       </div>
 

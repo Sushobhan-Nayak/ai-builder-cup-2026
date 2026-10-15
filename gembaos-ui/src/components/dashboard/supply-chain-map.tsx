@@ -303,6 +303,8 @@ export interface SupplyChainMapProps {
   canvasHeight?: string;
 }
 
+const DEFAULT_MAPS_KEY = "AIzaSyA3ZGIMrJCh6J1f7ST8B_yqo97Xbnv_cZ8";
+
 export function SupplyChainMap({
   className,
   canvasHeight = "h-[450px] lg:h-[500px]",
@@ -310,15 +312,17 @@ export function SupplyChainMap({
   const mapRef = useRef<HTMLDivElement>(null);
   const [viewMode, setViewMode] = useState<"geospatial" | "schematic">("geospatial");
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
-  const [mapEngine, setMapEngine] = useState<"google" | "vector">("vector");
+  const [mapEngine, setMapEngine] = useState<"google" | "vector">("google");
   const [selectedNode, setSelectedNode] = useState<SupplyNode | null>(null);
   const [activeLaneFilter, setActiveLaneFilter] = useState<"all" | "disrupted" | "active">("all");
-  const [activeKey, setActiveKey] = useState<string>("");
+  const [activeKey, setActiveKey] = useState<string>(
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || DEFAULT_MAPS_KEY
+  );
   const [keyInput, setKeyInput] = useState<string>("");
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [keyError, setKeyError] = useState<string | null>(null);
 
-  // 1. Detect API Key
+  // 1. Detect API Key (localStorage -> build-time env -> runtime API -> project key)
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -339,9 +343,13 @@ export function SupplyChainMap({
       .then((data) => {
         if (data?.key) {
           setActiveKey(data.key);
+        } else {
+          setActiveKey(DEFAULT_MAPS_KEY);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setActiveKey(DEFAULT_MAPS_KEY);
+      });
   }, []);
 
   // 2. Load Google Maps SDK
