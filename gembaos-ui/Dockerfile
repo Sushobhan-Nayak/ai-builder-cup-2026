@@ -31,12 +31,19 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 # Copy static assets and standalone build
-COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Guarantee static files are available if Next.js traces into subfolder
+RUN if [ -d "./gembaos-ui" ]; then \
+      mkdir -p ./gembaos-ui/.next && \
+      cp -r ./.next/static ./gembaos-ui/.next/static 2>/dev/null || true; \
+      cp -r ./public ./gembaos-ui/public 2>/dev/null || true; \
+    fi
 
 USER nextjs
 
 EXPOSE 8080
 
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "if [ -f ./server.js ]; then exec node server.js; else exec node gembaos-ui/server.js; fi"]
