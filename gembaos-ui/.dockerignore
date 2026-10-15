@@ -1,0 +1,12 @@
+Dockerfile
+.dockerignore
+node_modules
+.next
+.git
+.gitignore
+README.md
+npm-debug.log
+ai_builder_cup-main
+API_UI_MAPPING.md
+.env*
+
