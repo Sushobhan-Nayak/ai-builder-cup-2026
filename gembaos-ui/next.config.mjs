@@ -1,10 +1,6 @@
-import type { NextConfig } from "next";
-import path from "path";
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   output: "standalone",
-  outputFileTracingRoot: path.join(__dirname),
-  /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
   async rewrites() {
@@ -18,3 +14,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+

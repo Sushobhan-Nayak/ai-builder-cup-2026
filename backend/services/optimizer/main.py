@@ -2,12 +2,14 @@ import os
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, APIRouter
 from pydantic import BaseModel, Field
 from ortools.sat.python import cp_model
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+router = APIRouter(tags=["optimizer"])
 
 app = FastAPI(
     title="GembaOS Production Optimizer",
@@ -48,15 +50,15 @@ class CTPRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # Health Check
 # ---------------------------------------------------------------------------
-@app.get("/healthz")
+@router.get("/healthz")
 async def healthz():
     return {"status": "ok", "service": "optimizer", "engine": "ortools-cp-sat"}
 
 # ---------------------------------------------------------------------------
 # Schedule Solver (CP-SAT)
 # ---------------------------------------------------------------------------
-@app.post("/schedule/solve")
-@app.post("/v1/schedule/solve")
+@router.post("/schedule/solve")
+@router.post("/v1/schedule/solve")
 async def solve_schedule(req: ScheduleRequest):
     """
     Builds and solves the CP-SAT scheduling model as specified in GEMBAOS_SPEC.md 1888:
@@ -181,8 +183,8 @@ async def solve_schedule(req: ScheduleRequest):
 # ---------------------------------------------------------------------------
 # Capable-To-Promise (CTP) Check
 # ---------------------------------------------------------------------------
-@app.post("/ctp")
-@app.post("/v1/ctp")
+@router.post("/ctp")
+@router.post("/v1/ctp")
 async def capable_to_promise(req: CTPRequest):
     """
     Capable-To-Promise (CTP) engine:
@@ -291,8 +293,8 @@ async def capable_to_promise(req: CTPRequest):
 # ---------------------------------------------------------------------------
 # MRP (Material Requirements Planning) Calculation
 # ---------------------------------------------------------------------------
-@app.post("/mrp")
-@app.post("/v1/mrp")
+@router.post("/mrp")
+@router.post("/v1/mrp")
 async def run_mrp(horizon_weeks: int = 4):
     """Calculates net component requirements and recommended PO release dates."""
     return {
@@ -308,8 +310,8 @@ async def run_mrp(horizon_weeks: int = 4):
 # ---------------------------------------------------------------------------
 # Load Shifting (TOU & Carbon Optimization)
 # ---------------------------------------------------------------------------
-@app.post("/loadshift")
-@app.post("/v1/loadshift")
+@router.post("/loadshift")
+@router.post("/v1/loadshift")
 async def loadshift(plant_id: str = "NGO"):
     """
     Shifts energy-heavy operations (e.g. electric induction furnaces) 
@@ -324,4 +326,6 @@ async def loadshift(plant_id: str = "NGO"):
         "new_run_window": "23:00 - 05:30",
         "evidence_id": f"ev_opt_loadshift_{int(datetime.utcnow().timestamp())}"
     }
+
+app.include_router(router)
 

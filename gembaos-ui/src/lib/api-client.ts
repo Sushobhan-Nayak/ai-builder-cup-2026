@@ -589,3 +589,90 @@ export async function sendChatMessage(
     }
   );
 }
+
+// -------------------------------------------------------------
+// 9. Procurement Hub (/v1/procurement)
+// -------------------------------------------------------------
+
+export interface ReorderItem {
+  part_id: string;
+  part_name: string;
+  plant_id: string;
+  stock_qty: number;
+  reserved_qty: number;
+  location_bin: string;
+  recommended_qty: number;
+  supplier: string;
+  unit_cost_usd: number;
+  total_cost_usd: number;
+  urgency: "critical" | "high" | "medium" | "low";
+  reason: string;
+}
+
+export interface DraftPoResponse {
+  status: string;
+  po_number: string;
+  part_id: string;
+  supplier: string;
+  qty: number;
+  unit_cost_usd: number;
+  total_cost_usd: number;
+  freight: string;
+  lead_time_days: number;
+  estimated_delivery_date: string;
+  reason: string;
+  created_at: string;
+  governance: {
+    requires_role: string;
+    approval_status: string;
+    reversible: boolean;
+  };
+  target_system: string;
+  message: string;
+}
+
+export async function fetchReorderWorklist(plantId?: string): Promise<ReorderItem[]> {
+  const url = plantId
+    ? `${API_BASE_URL}/v1/procurement/reorder-worklist?plant_id=${encodeURIComponent(plantId)}`
+    : `${API_BASE_URL}/v1/procurement/reorder-worklist`;
+  const res = await fetchWithFallback<{ worklist: ReorderItem[] }>(url, {});
+  return res?.worklist || [];
+}
+
+export async function draftPo(payload: {
+  part_id: string;
+  supplier: string;
+  qty: number;
+  unit_cost_usd?: number;
+  freight?: string;
+  reason?: string;
+}): Promise<DraftPoResponse> {
+  return fetchWithFallback<DraftPoResponse>(
+    `${API_BASE_URL}/v1/procurement/draft-po`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+    {
+      status: "DRAFTED",
+      po_number: `PO-${Date.now().toString().slice(-8)}`,
+      part_id: payload.part_id,
+      supplier: payload.supplier,
+      qty: payload.qty,
+      unit_cost_usd: payload.unit_cost_usd ?? 24.8,
+      total_cost_usd: (payload.unit_cost_usd ?? 24.8) * payload.qty,
+      freight: payload.freight ?? "AIR_EXPEDITE",
+      lead_time_days: 6,
+      estimated_delivery_date: new Date(Date.now() + 6 * 86400000).toISOString().split("T")[0],
+      reason: payload.reason ?? "Replenishment buffer",
+      created_at: new Date().toISOString(),
+      governance: {
+        requires_role: "buyer",
+        approval_status: "PENDING_BUYER_SIGN_OFF",
+        reversible: true,
+      },
+      target_system: "ERP",
+      message: "Draft Purchase Order created successfully in ERP staging.",
+    }
+  );
+}

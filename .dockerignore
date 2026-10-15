@@ -1,5 +1,7 @@
 .venv
+**/.venv/
 __pycache__
+**/__pycache__/
 *.pyc
 *.pyo
 *.pyd
@@ -9,8 +11,13 @@ __pycache__
 .idea
 *.log
 node_modules
+**/node_modules/
 .next
+**/.next/
 dist
 build
-startup-docs
-
+gembaos-ui/
+startup-docs/
+*.key
+*key*.json
+credentials*.json

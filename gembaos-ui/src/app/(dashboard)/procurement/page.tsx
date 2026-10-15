@@ -1,10 +1,13 @@
 "use client";
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SUPPLIERS } from "@/lib/mock-data";
-import { ShoppingCart, Upload, AlertTriangle } from "lucide-react";
+import { ShoppingCart, Upload, CheckCircle2, RefreshCw, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { draftPo, fetchReorderWorklist, type ReorderItem, type DraftPoResponse } from "@/lib/api-client";
+import { useAppStore } from "@/store/app-store";
 
 function RiskRadar({ score }: { score: number }) {
   const color = score > 7 ? "#EF4444" : score > 4 ? "#F59E0B" : "#22C55E";
@@ -18,13 +21,60 @@ function RiskRadar({ score }: { score: number }) {
   );
 }
 
+const DEFAULT_WORKLIST = [
+  { part_id: "BRG-6205", part_name: "Bearing 6205", recommended_qty: 20, supplier: "NSK Japan", unit_cost_usd: 42.0, total_cost_usd: 840, urgency: "critical", reason: "PNQ-CNC-07 maintenance buffer" },
+  { part_id: "IC-GD-01", part_name: "Gate-driver IC", recommended_qty: 500, supplier: "Penang Micro (alt)", unit_cost_usd: 24.8, total_cost_usd: 12400, urgency: "high", reason: "Typhoon risk buffer" },
+  { part_id: "AL-A380-INGOT", part_name: "Shot sleeve / Ingot", recommended_qty: 10, supplier: "Thai Smelting Co", unit_cost_usd: 2450.0, total_cost_usd: 24500, urgency: "medium", reason: "Weekly replenishment buffer" },
+];
+
 export default function Procurement() {
+  const { selectedPlant } = useAppStore();
+  const [worklist, setWorklist] = useState<any[]>(DEFAULT_WORKLIST);
+  const [drafting, setDrafting] = useState<Record<string, boolean>>({});
+  const [drafted, setDrafted] = useState<Record<string, DraftPoResponse>>({});
+
+  useEffect(() => {
+    let mounted = true;
+    const plantParam = selectedPlant === "ALL" ? undefined : selectedPlant;
+    fetchReorderWorklist(plantParam).then((res) => {
+      if (mounted && res && res.length > 0) {
+        setWorklist(res);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [selectedPlant]);
+
+  const handleDraftPo = async (item: any) => {
+    const key = item.part_id || item.part_name;
+    setDrafting((prev) => ({ ...prev, [key]: true }));
+
+    try {
+      const res = await draftPo({
+        part_id: item.part_id || "IC-GD-01",
+        supplier: item.supplier,
+        qty: item.recommended_qty || item.qty || 100,
+        unit_cost_usd: item.unit_cost_usd,
+        reason: item.reason,
+      });
+      setDrafted((prev) => ({ ...prev, [key]: res }));
+    } catch (err) {
+      console.error("Failed to draft PO:", err);
+    } finally {
+      setDrafting((prev) => ({ ...prev, [key]: false }));
+    }
+  };
+
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center gap-3">
         <ShoppingCart className="w-5 h-5 text-[#22C55E]" />
-        <h1 className="text-lg font-bold text-[#E6EDF3]">Procurement Hub</h1>
+        <h1 className="text-lg font-bold text-[#E6EDF3]">Procurement Hub & Supplier Intelligence</h1>
         <Badge variant="default">Procurer Agent</Badge>
+        <span className="text-xs text-[#8B98A9] ml-auto font-mono">
+          Endpoint: POST /v1/procurement/draft-po · ERP Governance
+        </span>
       </div>
 
       <div className="grid grid-cols-12 gap-4">
@@ -67,30 +117,66 @@ export default function Procurement() {
         {/* Reorder worklist */}
         <Card className="col-span-12 lg:col-span-5">
           <CardHeader>
-            <CardTitle>Reorder Worklist</CardTitle>
-            <Badge variant="high">3 urgent</Badge>
+            <CardTitle>Reorder Worklist (Dynamic)</CardTitle>
+            <Badge variant="high">{worklist.length} pending</Badge>
           </CardHeader>
-          <div className="space-y-2">
-            {[
-              { part: "Bearing 6205", qty: 20, supplier: "NSK Japan", cost: "$840", urgency: "critical", reason: "CNC-07 maintenance" },
-              { part: "Gate-driver IC", qty: 500, supplier: "Penang Micro (alt)", cost: "$12,400", urgency: "high", reason: "Typhoon risk buffer" },
-              { part: "Shot sleeve DCM-02", qty: 1, supplier: "Local vendor", cost: "$2,100", urgency: "medium", reason: "Overdue maintenance" },
-            ].map((item, i) => (
-              <div key={i} className="p-3 rounded-lg bg-[#0B0F14] border border-[#243042] text-xs space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <Badge variant={item.urgency as "critical" | "high" | "medium"}>{item.urgency}</Badge>
-                  <span className="font-semibold text-[#E6EDF3]">{item.part}</span>
-                  <span className="text-green-400 ml-auto font-bold">{item.cost}</span>
+          <div className="space-y-2.5">
+            {worklist.map((item, i) => {
+              const key = item.part_id || item.part_name;
+              const isDrafting = drafting[key];
+              const poResult = drafted[key];
+
+              return (
+                <div key={i} className="p-3 rounded-lg bg-[#0B0F14] border border-[#243042] text-xs space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant={item.urgency as "critical" | "high" | "medium"}>{item.urgency}</Badge>
+                    <span className="font-semibold text-[#E6EDF3]">{item.part_name || item.part_id}</span>
+                    <span className="text-green-400 ml-auto font-bold">
+                      ${(item.total_cost_usd || item.unit_cost_usd * (item.recommended_qty || item.qty || 10)).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[#8B98A9]">
+                    <span>Qty: {item.recommended_qty || item.qty}</span>
+                    <span>·</span>
+                    <span>{item.supplier}</span>
+                    {item.location_bin && (
+                      <>
+                        <span>·</span>
+                        <span className="font-mono text-[10px]">Bin {item.location_bin}</span>
+                      </>
+                    )}
+                  </div>
+                  <p className="text-[#8B98A9]">{item.reason}</p>
+
+                  {poResult ? (
+                    <div className="p-2 rounded bg-green-500/10 border border-green-500/20 text-[11px] text-green-400 flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-mono font-semibold">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>{poResult.po_number} Staged</span>
+                      </div>
+                      <span className="text-[10px] text-[#8B98A9]">Est: {poResult.estimated_delivery_date}</span>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="w-full flex items-center justify-center gap-1.5"
+                      onClick={() => handleDraftPo(item)}
+                      disabled={isDrafting}
+                    >
+                      {isDrafting ? (
+                        <>
+                          <RefreshCw className="w-3 h-3 animate-spin" />
+                          <span>Drafting ERP PO…</span>
+                        </>
+                      ) : (
+                        <span>Draft PO (POST /v1/procurement/draft-po)</span>
+                      )}
+                    </Button>
+                  )}
                 </div>
-                <div className="flex items-center gap-2 text-[#8B98A9]">
-                  <span>Qty: {item.qty}</span>
-                  <span>·</span>
-                  <span>{item.supplier}</span>
-                </div>
-                <p className="text-[#8B98A9]">{item.reason}</p>
-                <Button size="sm" variant="primary" className="w-full">Draft PO</Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
 
