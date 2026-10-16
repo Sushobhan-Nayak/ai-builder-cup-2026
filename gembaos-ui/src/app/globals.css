@@ -58,3 +58,16 @@ body {
 .animate-ticker:hover {
   animation-play-state: paused;
 }
+
+/* Vertical continuous scrolling ticker */
+@keyframes vertical-scroll {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+.animate-vertical-scroll {
+  animation: vertical-scroll 75s linear infinite;
+}
+.animate-vertical-scroll:hover {
+  animation-play-state: paused;
+}
+

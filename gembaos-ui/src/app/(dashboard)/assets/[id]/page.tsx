@@ -1,4 +1,4 @@
-import AssetHealth from "@/app/(dashboard)/asset-health/page";
+import { AssetHealthView } from "@/components/dashboard/asset-health-view";
 
 export default async function AssetDetailPage({
   params,
@@ -6,5 +6,5 @@ export default async function AssetDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <AssetHealth paramsAssetId={id} />;
+  return <AssetHealthView assetId={id} />;
 }

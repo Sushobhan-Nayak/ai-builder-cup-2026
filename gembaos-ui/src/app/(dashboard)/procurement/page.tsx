@@ -1,13 +1,20 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { SUPPLIERS } from "@/lib/mock-data";
 import { ShoppingCart, Upload, CheckCircle2, RefreshCw, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { draftPo, fetchReorderWorklist, type ReorderItem, type DraftPoResponse } from "@/lib/api-client";
 import { useAppStore } from "@/store/app-store";
+
+const SUPPLIERS = [
+  { id: "SUP-FORMOSA", name: "Formosa Semicon", country: "Taiwan", city: "Hsinchu", risk_score: 8.2, otd_pct: 94, ppm: 120, tier: 1, status: "critical" },
+  { id: "SUP-PENANG", name: "Penang Micro", country: "Malaysia", city: "Penang", risk_score: 3.1, otd_pct: 97, ppm: 45, tier: 1, status: "ok" },
+  { id: "SUP-NSK", name: "NSK Japan", country: "Japan", city: "Tokyo", risk_score: 1.8, otd_pct: 99, ppm: 12, tier: 1, status: "ok" },
+  { id: "SUP-BAOTOU", name: "Baotou Magnetics", country: "China", city: "Baotou", risk_score: 5.4, otd_pct: 91, ppm: 280, tier: 2, status: "warn" },
+  { id: "SUP-VIET", name: "Hanoi Copper Wire", country: "Vietnam", city: "Hanoi", risk_score: 2.9, otd_pct: 96, ppm: 65, tier: 2, status: "ok" },
+];
 
 function RiskRadar({ score }: { score: number }) {
   const color = score > 7 ? "#EF4444" : score > 4 ? "#F59E0B" : "#22C55E";
@@ -32,6 +39,15 @@ export default function Procurement() {
   const [worklist, setWorklist] = useState<any[]>(DEFAULT_WORKLIST);
   const [drafting, setDrafting] = useState<Record<string, boolean>>({});
   const [drafted, setDrafted] = useState<Record<string, DraftPoResponse>>({});
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const names = Array.from(e.target.files).map((f) => f.name);
+      setUploadedFiles((prev) => [...prev, ...names]);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -114,69 +130,97 @@ export default function Procurement() {
           </div>
         </Card>
 
-        {/* Reorder worklist */}
-        <Card className="col-span-12 lg:col-span-5">
-          <CardHeader>
-            <CardTitle>Reorder Worklist (Dynamic)</CardTitle>
-            <Badge variant="high">{worklist.length} pending</Badge>
+        {/* Reorder worklist: Compact with continuous moving scrolling animation */}
+        <Card className="col-span-12 lg:col-span-5 flex flex-col h-[295px] overflow-hidden">
+          <CardHeader className="py-2.5 px-3 border-b border-[#243042]/50 shrink-0">
+            <div className="flex items-center justify-between w-full">
+              <CardTitle className="text-xs uppercase tracking-wider text-[#8B98A9]">
+                Reorder Worklist (Dynamic)
+              </CardTitle>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] text-cyan-400/80 font-mono hidden sm:inline animate-pulse">
+                  Auto-scrolling · Hover to pause
+                </span>
+                <Badge variant="high" className="text-[10px] py-0 px-1.5 font-mono">
+                  {worklist.length} pending
+                </Badge>
+              </div>
+            </div>
           </CardHeader>
-          <div className="space-y-2.5">
-            {worklist.map((item, i) => {
-              const key = item.part_id || item.part_name;
-              const isDrafting = drafting[key];
-              const poResult = drafted[key];
 
-              return (
-                <div key={i} className="p-3 rounded-lg bg-[#0B0F14] border border-[#243042] text-xs space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant={item.urgency as "critical" | "high" | "medium"}>{item.urgency}</Badge>
-                    <span className="font-semibold text-[#E6EDF3]">{item.part_name || item.part_id}</span>
-                    <span className="text-green-400 ml-auto font-bold">
-                      ${(item.total_cost_usd || item.unit_cost_usd * (item.recommended_qty || item.qty || 10)).toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-[#8B98A9]">
-                    <span>Qty: {item.recommended_qty || item.qty}</span>
-                    <span>·</span>
-                    <span>{item.supplier}</span>
-                    {item.location_bin && (
-                      <>
-                        <span>·</span>
-                        <span className="font-mono text-[10px]">Bin {item.location_bin}</span>
-                      </>
+          <div className="relative flex-1 overflow-hidden p-2.5 group">
+            {/* Soft gradient masks top and bottom */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-[#0c1322] to-transparent z-10" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-[#0c1322] to-transparent z-10" />
+
+            {/* Continuous vertical scrolling marquee */}
+            <div className="animate-vertical-scroll flex flex-col gap-2">
+              {(worklist.length > 0 ? [...worklist, ...worklist] : []).map((item, i) => {
+                const key = `${item.part_id || item.part_name}-${i}`;
+                const baseKey = item.part_id || item.part_name;
+                const isDrafting = drafting[baseKey];
+                const poResult = drafted[baseKey];
+
+                return (
+                  <div
+                    key={key}
+                    className="p-2.5 rounded-lg bg-[#0B0F14] border border-[#243042] text-xs space-y-1.5 shrink-0 hover:border-cyan-500/50 transition-colors shadow-xs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Badge variant={item.urgency as "critical" | "high" | "medium"} className="text-[9px] py-0 px-1.5">
+                        {item.urgency}
+                      </Badge>
+                      <span className="font-semibold text-[#E6EDF3] truncate text-[11px]">
+                        {item.part_name || item.part_id}
+                      </span>
+                      <span className="text-emerald-400 ml-auto font-bold font-mono text-xs">
+                        ${(item.total_cost_usd || item.unit_cost_usd * (item.recommended_qty || item.qty || 10)).toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[#8B98A9] text-[10px]">
+                      <span>Qty: {item.recommended_qty || item.qty}</span>
+                      <span>·</span>
+                      <span className="truncate">{item.supplier}</span>
+                      {item.location_bin && (
+                        <>
+                          <span>·</span>
+                          <span className="font-mono text-[9px]">Bin {item.location_bin}</span>
+                        </>
+                      )}
+                    </div>
+
+                    <p className="text-[#8B98A9] text-[10px] leading-tight line-clamp-1">{item.reason}</p>
+
+                    {poResult ? (
+                      <div className="p-1.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 flex items-center justify-between">
+                        <div className="flex items-center gap-1 font-mono font-semibold">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>{poResult.po_number} Staged</span>
+                        </div>
+                        <span className="text-[9px] text-[#8B98A9]">Est: {poResult.estimated_delivery_date}</span>
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="w-full h-6 text-[11px] flex items-center justify-center gap-1.5 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/40 font-semibold cursor-pointer"
+                        onClick={() => handleDraftPo(item)}
+                        disabled={isDrafting}
+                      >
+                        {isDrafting ? (
+                          <>
+                            <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                            <span>Drafting ERP PO…</span>
+                          </>
+                        ) : (
+                          <span>Draft PO</span>
+                        )}
+                      </Button>
                     )}
                   </div>
-                  <p className="text-[#8B98A9]">{item.reason}</p>
-
-                  {poResult ? (
-                    <div className="p-2 rounded bg-green-500/10 border border-green-500/20 text-[11px] text-green-400 flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 font-mono font-semibold">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>{poResult.po_number} Staged</span>
-                      </div>
-                      <span className="text-[10px] text-[#8B98A9]">Est: {poResult.estimated_delivery_date}</span>
-                    </div>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      className="w-full flex items-center justify-center gap-1.5"
-                      onClick={() => handleDraftPo(item)}
-                      disabled={isDrafting}
-                    >
-                      {isDrafting ? (
-                        <>
-                          <RefreshCw className="w-3 h-3 animate-spin" />
-                          <span>Drafting ERP PO…</span>
-                        </>
-                      ) : (
-                        <span>Draft PO (POST /v1/procurement/draft-po)</span>
-                      )}
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </Card>
 
@@ -186,11 +230,30 @@ export default function Procurement() {
             <CardTitle>Quote Comparison — Gate-driver IC</CardTitle>
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-[#8B98A9]">Gemini document AI · 3 PDFs parsed</span>
-              <Button size="sm" variant="secondary">
-                <Upload className="w-3 h-3" /> Upload PDFs
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".pdf,.png,.jpg"
+                className="hidden"
+                onChange={handleUploadChange}
+              />
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="w-3 h-3 mr-1" />
+                {uploadedFiles.length > 0 ? `${uploadedFiles.length} Uploaded` : "Upload PDFs"}
               </Button>
             </div>
           </CardHeader>
+          {uploadedFiles.length > 0 && (
+            <div className="mb-2 px-3 py-1.5 bg-base-300 rounded text-[11px] text-[#8B98A9] flex items-center gap-2">
+              <CheckCircle2 className="w-3 h-3 text-success" />
+              <span>Parsed RFQ Documents: {uploadedFiles.join(", ")}</span>
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>

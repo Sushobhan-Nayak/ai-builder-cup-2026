@@ -3,10 +3,18 @@ import { useState, useRef } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DEFECT_IMAGES } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { Search, CheckCircle, XCircle, UploadCloud, RefreshCw, Eye } from "lucide-react";
 import { postInspection } from "@/lib/api-client";
+
+const DEFECT_IMAGES = [
+  { id: "img_001", lot: "L-4471", sku: "HSG-220", ts: "2026-10-15T05:12:00Z", is_defect: true, defect_type: "porosity", severity: "high", confidence: 0.91, plant: "RYG" },
+  { id: "img_002", lot: "L-4471", sku: "HSG-220", ts: "2026-10-15T05:14:00Z", is_defect: true, defect_type: "porosity", severity: "medium", confidence: 0.84, plant: "RYG" },
+  { id: "img_003", lot: "L-4470", sku: "HSG-220", ts: "2026-10-15T04:50:00Z", is_defect: false, defect_type: null, severity: null, confidence: 0.97, plant: "RYG" },
+  { id: "img_004", lot: "L-4471", sku: "HSG-220", ts: "2026-10-15T05:18:00Z", is_defect: true, defect_type: "cold_shut", severity: "low", confidence: 0.76, plant: "RYG" },
+  { id: "img_005", lot: "L-4472", sku: "HSG-220", ts: "2026-10-15T05:45:00Z", is_defect: false, defect_type: null, severity: null, confidence: 0.99, plant: "RYG" },
+  { id: "img_006", lot: "L-4472", sku: "HSG-220", ts: "2026-10-15T05:47:00Z", is_defect: true, defect_type: "flash", severity: "low", confidence: 0.82, plant: "RYG" },
+];
 
 const DEFECT_COLORS: Record<string, string> = {
   porosity: "#EF4444",
@@ -133,88 +141,95 @@ export default function QualityStudio() {
   };
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="flex items-center gap-3">
-        <Search className="w-5 h-5 text-[#F59E0B]" />
-        <h1 className="text-lg font-bold text-[#E6EDF3]">Visual Quality Studio</h1>
-        <Badge variant="default">Multimodal Casting Inspector</Badge>
-        <span className="text-xs text-[#8B98A9] ml-auto font-mono">
-          Endpoint: POST /v1/inspections · Stage 1 Flash-Lite + Stage 2 Flash
-        </span>
+    <div className="p-4 space-y-3">
+      {/* 1. Header Bar with integrated Upload action */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+            <Search className="w-4 h-4" />
+          </div>
+          <h1 className="text-sm sm:text-base font-bold text-[#E6EDF3]">Visual Quality Studio</h1>
+          <Badge variant="default" className="text-[10px]">Inspector Agent</Badge>
+          <span className="hidden lg:inline-block text-[10px] text-[#8B98A9] font-mono">
+            POST /v1/inspections · 2-Stage CV
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            accept="image/*"
+            className="hidden"
+          />
+          <Button
+            size="sm"
+            variant="primary"
+            className="h-8 text-xs gap-1.5"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Analyzing…
+              </>
+            ) : (
+              <>
+                <UploadCloud className="w-3.5 h-3.5" /> Upload & Inspect Image
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {[
-          { label: "Inspected", value: "6", unit: "images" },
-          { label: "Defects", value: "4", unit: "detected", status: "crit" },
-          { label: "Defect Rate", value: "66.7", unit: "%", status: "crit" },
-          { label: "Model Confidence", value: "91", unit: "%" },
-        ].map((s) => (
-          <div key={s.label} className="bg-[#121821] border border-[#243042] rounded-xl p-3 text-center">
-            <p className="text-[10px] text-[#8B98A9] uppercase tracking-wider">{s.label}</p>
-            <p className={cn("text-xl font-bold tabular mt-1", s.status === "crit" ? "text-red-400" : "text-[#E6EDF3]")}>
-              {s.value}
-              <span className="text-xs text-[#8B98A9] ml-0.5">{s.unit}</span>
-            </p>
-          </div>
-        ))}
-      </div>
+      {/* 2. Compact Quality Runway Ticker */}
+      <div className="rounded-xl bg-[#0c1322] border border-[#243042] px-3 py-1.5 shadow-md flex items-center justify-between gap-3 overflow-hidden text-xs">
+        <div className="flex items-center gap-2 shrink-0 pr-2.5 border-r border-[#243042]">
+          <span className="text-[11px] font-bold text-[#E6EDF3] uppercase tracking-wider hidden sm:inline">
+            Quality Ticker
+          </span>
+          <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-red-500/20 text-red-300 border border-red-500/40">
+            4 Defects Detected
+          </span>
+        </div>
 
-      {/* Upload Banner */}
-      <Card>
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-primary/10 text-primary border border-primary/20">
-              <UploadCloud className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-[#E6EDF3]">
-                Upload High-Pressure Die Casting Image (/v1/inspections)
-              </p>
-              <p className="text-[11px] text-[#8B98A9]">
-                Supports JPEG/PNG casting images. Triggers 2-stage defect detection with 2D bounding boxes.
-              </p>
-            </div>
+        {/* Horizontal Ticker Chips */}
+        <div className="flex items-center gap-2 overflow-x-auto w-full scrollbar-none py-0.5">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-[#1e293b] bg-[#050912] text-[11px] shrink-0">
+            <span className="text-[#8B98A9]">Inspected:</span>
+            <span className="font-bold text-[#E6EDF3] font-mono">6 images</span>
           </div>
-          <div>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              accept="image/*"
-              className="hidden"
-            />
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-            >
-              {uploading ? (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Analyzing Image…
-                </>
-              ) : (
-                <>
-                  <UploadCloud className="w-3.5 h-3.5" /> Upload & Inspect Image
-                </>
-              )}
-            </Button>
+
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-red-500/40 bg-red-950/30 text-red-200 text-[11px] shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse shrink-0" />
+            <span className="text-red-300">Defects:</span>
+            <span className="font-bold font-mono">4 detected</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-red-500/40 bg-red-950/30 text-red-200 text-[11px] shrink-0">
+            <span className="text-red-300">Defect Rate:</span>
+            <span className="font-bold font-mono text-red-400">66.7%</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-[#1e293b] bg-[#050912] text-[11px] shrink-0">
+            <span className="text-[#8B98A9]">Model Confidence:</span>
+            <span className="font-bold text-emerald-400 font-mono">91%</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-[#1e293b] bg-[#050912] text-[11px] shrink-0">
+            <span className="text-[#8B98A9]">Pipeline:</span>
+            <span className="font-medium text-cyan-300 font-mono text-[10px]">Flash-Lite → Gemini 3.8 Flash</span>
           </div>
         </div>
 
         {inspectionResult && (
-          <div className="mt-3 p-3 rounded-lg bg-base-300 border border-base-content/10 flex items-center justify-between text-xs">
-            <span className="text-success font-medium">
-              ✓ Inspection #{inspectionResult.inspection_id} completed: {inspectionResult.defects_found} defect(s) detected.
-            </span>
-            <span className="text-[11px] text-[#8B98A9] font-mono">
-              Boxes: {JSON.stringify(inspectionResult.boxes)}
-            </span>
+          <div className="shrink-0 text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+            <CheckCircle className="w-3 h-3" />
+            <span>Inspection #{inspectionResult.inspection_id} ({inspectionResult.defects_found} defect)</span>
           </div>
         )}
-      </Card>
+      </div>
 
       <div className="grid grid-cols-12 gap-4">
         {/* Image feed */}

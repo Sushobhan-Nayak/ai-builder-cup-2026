@@ -28,30 +28,64 @@ export default function Sustainability() {
   const recText = loadShift?.recommendation || "Move NGO furnace pre-heat cycles from 08:00–10:00 to 02:00–05:00.";
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="flex items-center gap-3">
-        <Leaf className="w-5 h-5 text-[#22C55E]" />
-        <h1 className="text-lg font-bold text-[#E6EDF3]">Energy & Sustainability</h1>
-        <Badge variant="default">Verdant Agent</Badge>
+    <div className="p-3 space-y-2.5 max-w-[1600px] mx-auto select-none">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <Leaf className="w-5 h-5 text-emerald-400" />
+          <h1 className="text-base font-bold text-[#E6EDF3]">Energy & Sustainability</h1>
+          <Badge variant="default" className="text-[10px] font-semibold py-0.5">Verdant Agent</Badge>
+        </div>
+        <span className="text-xs text-[#8B98A9] font-mono">
+          ISO 50001 · GHG Protocol Scope 1, 2 & 3
+        </span>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-4 gap-2">
-        {[
-          { label: "Energy/Unit", value: "4.1 kWh", delta: "−0.2", ok: true },
-          { label: "CO₂/Unit", value: "1.9 kg", delta: "−0.1", ok: true },
-          { label: "Scope 1+2 (Oct)", value: "142 tCO₂e", delta: "−8%", ok: true },
-          { label: "Energy Cost (Oct)", value: "$28.4k", delta: "−$3.1k", ok: true },
-        ].map((k) => (
-          <div key={k.label} className="bg-[#121821] border border-[#243042] rounded-xl p-3">
-            <p className="text-[10px] text-[#8B98A9] uppercase tracking-wider">{k.label}</p>
-            <p className="text-xl font-bold tabular mt-1 text-green-400">{k.value}</p>
-            <p className="text-[10px] text-green-400">{k.delta} vs last month</p>
+      {/* Sustainability Metrics Runway Ticker */}
+      <div className="rounded-xl bg-[#0c1322] border border-[#243042] px-3 py-1.5 shadow-sm flex items-center justify-between gap-3 text-xs overflow-hidden">
+        <div className="flex items-center gap-2 shrink-0 pr-2.5 border-r border-[#243042]">
+          <span className="text-[11px] font-bold text-[#E6EDF3] uppercase tracking-wider hidden sm:inline">
+            Sustainability Runway
+          </span>
+          <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
+            ESG Optimal
+          </span>
+        </div>
+
+        {/* Horizontal Ticker Chips */}
+        <div className="flex items-center gap-2 overflow-x-auto w-full scrollbar-none py-0.5">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-emerald-500/30 bg-emerald-950/20 text-[11px] shrink-0">
+            <span className="text-[#8B98A9]">Energy/Unit:</span>
+            <span className="font-bold text-emerald-400 font-mono">4.1 kWh</span>
+            <span className="text-[10px] text-emerald-500 font-mono">−0.2 vs L/M</span>
           </div>
-        ))}
+
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-emerald-500/30 bg-emerald-950/20 text-[11px] shrink-0">
+            <span className="text-[#8B98A9]">CO₂/Unit:</span>
+            <span className="font-bold text-emerald-400 font-mono">1.9 kg</span>
+            <span className="text-[10px] text-emerald-500 font-mono">−0.1 vs L/M</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-emerald-500/30 bg-emerald-950/20 text-[11px] shrink-0">
+            <span className="text-[#8B98A9]">Scope 1+2 (Oct):</span>
+            <span className="font-bold text-emerald-400 font-mono">142 tCO₂e</span>
+            <span className="text-[10px] text-emerald-500 font-mono">−8% vs L/M</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-emerald-500/30 bg-emerald-950/20 text-[11px] shrink-0">
+            <span className="text-[#8B98A9]">Energy Cost (Oct):</span>
+            <span className="font-bold text-emerald-400 font-mono">$28.4k</span>
+            <span className="text-[10px] text-emerald-500 font-mono">−$3.1k vs L/M</span>
+          </div>
+        </div>
+
+        <div className="shrink-0 text-[10px] text-emerald-400 font-mono flex items-center gap-1 hidden md:flex">
+          <CheckCircle className="w-3 h-3" />
+          <span>GRI Standards Compliant</span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-4">
+      <div className="grid grid-cols-12 gap-3">
         {/* Energy profile */}
         <Card className="col-span-12 lg:col-span-8">
           <CardHeader>
@@ -96,8 +130,33 @@ export default function Sustainability() {
               <p className="text-[10px] text-[#A78BFA] mt-2">[ev:tariff-1] [ev:carbon-feed-1]</p>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" variant="success" className="flex-1"><CheckCircle className="w-3 h-3" />Approve</Button>
-              <Button size="sm" variant="secondary" className="flex-1">Simulate</Button>
+              <Button
+                size="sm"
+                variant="success"
+                className="flex-1"
+                onClick={async () => {
+                  try {
+                    const res = await calculateLoadShift("NGO");
+                    setLoadShift(res);
+                  } catch (e) {
+                    console.warn(e);
+                  }
+                }}
+              >
+                <CheckCircle className="w-3 h-3" />
+                Apply Load Shift
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="flex-1"
+                onClick={async () => {
+                  const res = await calculateLoadShift("NGO");
+                  setLoadShift(res);
+                }}
+              >
+                Simulate Shift
+              </Button>
             </div>
           </div>
         </Card>

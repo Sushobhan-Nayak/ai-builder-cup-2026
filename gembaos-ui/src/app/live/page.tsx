@@ -1,9 +1,16 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mic, MicOff, Camera, FileText, Package, CheckCircle, Zap, ShieldAlert, ArrowLeft } from "lucide-react";
+import {
+  Mic,
+  MicOff,
+  Camera,
+  FileText,
+  Package,
+  CheckCircle,
+  ShieldAlert,
+  ArrowLeft,
+  Sparkles,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -58,6 +65,7 @@ export default function GembaLive() {
   const [noteSaved, setNoteSaved] = useState(false);
   const [lotoVerified, setLotoVerified] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
+  const [showSteps, setShowSteps] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -66,20 +74,15 @@ export default function GembaLive() {
     setListening(true);
     setVisibleCount(0);
 
-    // Attempt connecting to live WebSocket (/ws/live)
     try {
       const apiHost =
-        process.env.NEXT_PUBLIC_API_URL?.replace(/^http/, "ws") || "wss://gembaos-gateway-100149412472.asia-southeast1.run.app";
+        process.env.NEXT_PUBLIC_API_URL?.replace(/^http/, "ws") ||
+        "wss://gembaos-gateway-100149412472.asia-southeast1.run.app";
       const ws = new WebSocket(`${apiHost}/ws/live`);
       wsRef.current = ws;
 
-      ws.onopen = () => {
-        setWsConnected(true);
-      };
-      ws.onerror = () => {
-        console.warn("Gemba Live WS fallback active");
-        setWsConnected(true); // gracefully continue simulation
-      };
+      ws.onopen = () => setWsConnected(true);
+      ws.onerror = () => setWsConnected(true);
     } catch {
       setWsConnected(true);
     }
@@ -110,37 +113,40 @@ export default function GembaLive() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0B0F14] flex flex-col items-center justify-start p-4">
-      {/* Mobile-style container */}
-      <div className="w-full max-w-sm space-y-3">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-xs text-[#8B98A9] hover:text-[#E6EDF3]">
-            <ArrowLeft className="w-4 h-4" />
+    <div className="min-h-screen bg-[#070b12] flex flex-col items-center justify-start p-3 sm:p-6 pb-20">
+      {/* Mobile-first Handheld Technician Frame (DaisyUI Styled) */}
+      <div className="w-full max-w-md space-y-3">
+        {/* Top Header */}
+        <div className="flex items-center justify-between px-1">
+          <Link
+            href="/"
+            className="btn btn-ghost btn-xs h-7 px-2 gap-1.5 text-xs text-[#8B98A9] hover:text-[#E6EDF3]"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
             <span>Command Center</span>
           </Link>
-          <div className="flex items-center gap-2">
-            <Badge variant="default">हिन्दी</Badge>
-            <Badge variant="ok" className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block animate-pulse" />
+          <div className="flex items-center gap-1.5">
+            <span className="badge badge-neutral badge-sm font-semibold">हिन्दी</span>
+            <span className="badge badge-success badge-outline badge-sm gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               Gemini 3.8 Live (WS)
-            </Badge>
+            </span>
           </div>
         </div>
 
-        {/* Camera view */}
-        <div className="relative w-full h-52 bg-gradient-to-br from-[#0A1020] to-[#121821] rounded-2xl border border-[#243042] overflow-hidden flex items-center justify-center">
-          <div className="text-center space-y-2">
-            <Camera className="w-10 h-10 text-[#243042] mx-auto" />
+        {/* Mobile Camera Stream Viewport */}
+        <div className="relative w-full h-56 bg-gradient-to-br from-[#0c1322] to-[#141d2e] rounded-2xl border border-[#243042] overflow-hidden flex items-center justify-center shadow-lg">
+          <div className="text-center space-y-1.5">
+            <Camera className="w-8 h-8 text-[#334155] mx-auto" />
             <p className="text-xs text-[#8B98A9]">Mobile Camera Stream (16kHz PCM + JPEG)</p>
           </div>
 
           {started && (
             <>
               {/* Detection overlay */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="border-2 border-[#4F8CFF] rounded-lg w-36 h-24 flex items-center justify-center relative">
-                  <span className="text-[10px] text-[#4F8CFF] bg-[#0B0F14]/90 px-2 py-0.5 rounded font-mono">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="border-2 border-primary rounded-lg w-36 h-24 flex items-center justify-center relative shadow-lg shadow-primary/20">
+                  <span className="text-[10px] text-primary bg-[#070b12]/90 px-2 py-0.5 rounded font-mono font-bold">
                     PNQ-CNC-07 ✓
                   </span>
                 </div>
@@ -149,10 +155,10 @@ export default function GembaLive() {
               {/* LOTO overlay badge */}
               <div
                 className={cn(
-                  "absolute top-3 left-3 px-2.5 py-1 rounded-lg border text-[10px] font-bold flex items-center gap-1",
+                  "absolute top-3 left-3 badge gap-1 text-[10px] font-bold py-2 shadow-md",
                   lotoVerified
-                    ? "bg-green-500/20 border-green-500/40 text-green-400"
-                    : "bg-red-500/20 border-red-500/40 text-red-400 animate-pulse"
+                    ? "badge-success"
+                    : "badge-error animate-pulse"
                 )}
               >
                 <ShieldAlert className="w-3.5 h-3.5" />
@@ -160,50 +166,53 @@ export default function GembaLive() {
               </div>
 
               {/* Alarm overlay */}
-              <div className="absolute top-3 right-3 bg-red-500/20 border border-red-500/40 rounded-lg px-2 py-1">
-                <p className="text-[10px] text-red-400 font-mono">⚠ E-2145 (Bearing)</p>
+              <div className="absolute top-3 right-3 badge badge-error badge-outline py-2 text-[10px] font-mono">
+                ⚠ E-2145 (Bearing)
               </div>
             </>
           )}
 
           {/* Corner indicators */}
-          <div className="absolute bottom-2 left-2 flex items-center gap-1">
+          <div className="absolute bottom-2 left-3 flex items-center gap-1.5 text-[10px] text-[#8B98A9]">
             <span
-              className={cn("w-2 h-2 rounded-full", listening ? "bg-red-400 pulse-warn" : "bg-[#243042]")}
+              className={cn(
+                "w-2 h-2 rounded-full",
+                listening ? "bg-red-400 animate-ping" : "bg-[#334155]"
+              )}
             />
-            <span className="text-[10px] text-[#8B98A9]">
-              {listening ? "Audio Active (16kHz)" : "Standby"}
-            </span>
+            <span>{listening ? "Audio Active (16kHz)" : "Standby"}</span>
           </div>
-          <div className="absolute bottom-2 right-2 text-[10px] text-[#8B98A9] font-mono">
+          <div className="absolute bottom-2 right-3 text-[10px] text-[#8B98A9] font-mono">
             ws/live · latency &lt;1.5s
           </div>
         </div>
 
-        {/* Step tracker */}
-        {started && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xs">SOP: Bearing Replacement CNC-07</CardTitle>
-              <span className="text-[10px] text-[#8B98A9]">Step 3 of 9</span>
-            </CardHeader>
-            <div className="space-y-1.5 max-h-36 overflow-y-auto">
+        {/* Step tracker (Toggleable or shows when active) */}
+        {(started || showSteps) && (
+          <div className="card bg-[#0e1626] border border-[#243042] rounded-2xl p-3 shadow-md space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-[#E6EDF3]">
+                SOP: Bearing Replacement CNC-07
+              </span>
+              <span className="badge badge-primary badge-xs">Step 3 of 9</span>
+            </div>
+            <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
               {STEPS.map((step) => (
                 <div
                   key={step.n}
                   className={cn(
                     "flex items-center gap-2 text-xs px-2 py-1 rounded-lg",
-                    step.active ? "bg-[#4F8CFF]/10 border border-[#4F8CFF]/30" : ""
+                    step.active ? "bg-primary/10 border border-primary/30" : ""
                   )}
                 >
                   <div
                     className={cn(
                       "w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0",
                       step.done
-                        ? "bg-green-500/20 text-green-400"
+                        ? "bg-emerald-500/20 text-emerald-400"
                         : step.active
-                        ? "bg-[#4F8CFF]/20 text-[#4F8CFF]"
-                        : "bg-[#243042] text-[#8B98A9]"
+                        ? "bg-primary text-primary-content"
+                        : "bg-[#1e293b] text-[#8B98A9]"
                     )}
                   >
                     {step.done ? "✓" : step.n}
@@ -222,99 +231,123 @@ export default function GembaLive() {
                 </div>
               ))}
             </div>
-          </Card>
+          </div>
         )}
 
-        {/* Full-duplex conversation */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xs">Voice Dialogue Stream</CardTitle>
+        {/* Voice Dialogue Stream (Using DaisyUI Chat) */}
+        <div className="card bg-[#0e1626] border border-[#243042] rounded-2xl p-3 shadow-md space-y-2">
+          <div className="flex items-center justify-between text-xs pb-1 border-b border-[#1e293b]">
+            <span className="font-bold text-[#E6EDF3] uppercase tracking-wider text-[11px]">
+              Voice Dialogue Stream
+            </span>
             {listening && (
               <div className="flex gap-1">
-                <span className="w-1.5 h-1.5 bg-[#A78BFA] rounded-full animate-bounce" />
-                <span className="w-1.5 h-1.5 bg-[#A78BFA] rounded-full animate-bounce delay-100" />
-                <span className="w-1.5 h-1.5 bg-[#A78BFA] rounded-full animate-bounce delay-200" />
+                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" />
+                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce delay-100" />
+                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce delay-200" />
               </div>
             )}
-          </CardHeader>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {CONVERSATION.slice(0, visibleCount).map((msg, i) => (
-              <div key={i} className={cn("flex gap-2", msg.role === "user" && "flex-row-reverse")}>
-                <div
-                  className={cn(
-                    "max-w-[85%] rounded-xl px-3 py-2 text-xs",
-                    msg.role === "user"
-                      ? "bg-[#4F8CFF]/15 border border-[#4F8CFF]/30 text-[#E6EDF3]"
-                      : "bg-[#121821] border border-[#243042] text-[#E6EDF3]"
-                  )}
-                >
-                  {msg.role === "user" && msg.lang === "hi" && (
-                    <p className="text-[#8B98A9] text-[10px] mb-0.5 italic">{msg.translation}</p>
-                  )}
-                  <p>{msg.text}</p>
-                </div>
+          </div>
+
+          <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+            {!started && visibleCount === 0 ? (
+              <div className="text-center py-6 text-[#8B98A9] text-xs">
+                <Sparkles className="w-5 h-5 mx-auto mb-1 text-primary/50" />
+                <p>Tap mic to begin voice conversation</p>
               </div>
-            ))}
+            ) : (
+              CONVERSATION.slice(0, visibleCount).map((msg, i) => (
+                <div
+                  key={i}
+                  className={cn("chat", msg.role === "user" ? "chat-end" : "chat-start")}
+                >
+                  <div
+                    className={cn(
+                      "chat-bubble text-xs leading-relaxed max-w-[88%]",
+                      msg.role === "user"
+                        ? "chat-bubble-primary text-primary-content"
+                        : "bg-[#151f33] border border-[#243042] text-[#E6EDF3]"
+                    )}
+                  >
+                    {msg.role === "user" && msg.lang === "hi" && (
+                      <p className="text-[10px] opacity-80 mb-0.5 italic">
+                        {msg.translation}
+                      </p>
+                    )}
+                    <p>{msg.text}</p>
+                  </div>
+                </div>
+              ))
+            )}
             <div ref={bottomRef} />
           </div>
-        </Card>
+        </div>
 
-        {/* Knowledge note */}
+        {/* Knowledge note (Appears when completed) */}
         {visibleCount >= CONVERSATION.length && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xs">📝 Log Finding (Tribal Knowledge)</CardTitle>
-            </CardHeader>
-            <div className="space-y-2">
-              <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Dictate or type what you found… (e.g. 'Outer-race bearing worn, grease dried out, replaced with 6205, 3h repair')"
-                className="w-full bg-[#0B0F14] border border-[#243042] rounded-lg p-2.5 text-xs text-[#E6EDF3] placeholder:text-[#8B98A9] outline-none focus:border-[#4F8CFF] resize-none h-20"
-              />
-              {!noteSaved ? (
-                <Button
-                  size="sm"
-                  variant="primary"
-                  className="w-full"
-                  onClick={() => setNoteSaved(true)}
-                  disabled={!note.trim()}
-                >
-                  Save Knowledge Note
-                </Button>
-              ) : (
-                <div className="flex items-center gap-1.5 text-xs text-green-400">
-                  <CheckCircle className="w-3.5 h-3.5" /> Saved to ai.knowledge_notes · linked to CNC-07
-                </div>
-              )}
-            </div>
-          </Card>
+          <div className="card bg-[#0e1626] border border-[#243042] rounded-2xl p-3 shadow-md space-y-2">
+            <span className="text-xs font-semibold text-[#E6EDF3]">
+              📝 Log Finding (Tribal Knowledge)
+            </span>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Dictate or type what you found… (e.g. 'Outer-race bearing worn, grease dried out, replaced with 6205, 3h repair')"
+              className="textarea textarea-bordered w-full bg-[#070b12] border-[#243042] text-xs text-[#E6EDF3] placeholder:text-[#8B98A9] resize-none h-20"
+            />
+            {!noteSaved ? (
+              <button
+                onClick={() => setNoteSaved(true)}
+                disabled={!note.trim()}
+                className="btn btn-primary btn-sm w-full h-8 text-xs"
+              >
+                Save Knowledge Note
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5 text-xs text-emerald-400">
+                <CheckCircle className="w-3.5 h-3.5" /> Saved to ai.knowledge_notes · linked to CNC-07
+              </div>
+            )}
+          </div>
         )}
 
-        {/* Controls */}
-        <div className="flex gap-3 items-center justify-center">
-          <button className="p-3 rounded-full bg-[#121821] border border-[#243042] text-[#8B98A9] hover:text-[#E6EDF3]">
-            <FileText className="w-5 h-5" />
+        {/* DaisyUI Three Round Action Controls */}
+        <div className="flex gap-4 items-center justify-center pt-1">
+          <button
+            onClick={() => setShowSteps(!showSteps)}
+            className="btn btn-circle btn-sm w-11 h-11 bg-[#121821] border border-[#243042] text-[#8B98A9] hover:text-[#E6EDF3]"
+            title="Toggle SOP Checklist"
+          >
+            <FileText className="w-4 h-4" />
           </button>
           <button
             onClick={started ? () => setListening(!listening) : start}
             className={cn(
-              "w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-lg",
+              "btn btn-circle w-16 h-16 shadow-lg border-none transition-all",
               listening
-                ? "bg-red-500 hover:bg-red-600 shadow-red-500/30"
-                : "bg-[#4F8CFF] hover:bg-[#3a7aee] shadow-[#4F8CFF]/30"
+                ? "btn-error shadow-error/30 animate-pulse"
+                : "btn-primary shadow-primary/30"
             )}
           >
-            {listening ? <MicOff className="w-7 h-7 text-white" /> : <Mic className="w-7 h-7 text-white" />}
+            {listening ? (
+              <MicOff className="w-7 h-7 text-white" />
+            ) : (
+              <Mic className="w-7 h-7 text-white" />
+            )}
           </button>
-          <button className="p-3 rounded-full bg-[#121821] border border-[#243042] text-[#8B98A9] hover:text-[#E6EDF3]">
-            <Package className="w-5 h-5" />
+          <button
+            onClick={() => alert("Tool crib: Bearing puller P-204 located in Bin B3.")}
+            className="btn btn-circle btn-sm w-11 h-11 bg-[#121821] border border-[#243042] text-[#8B98A9] hover:text-[#E6EDF3]"
+            title="Tool & Spare Part Crib"
+          >
+            <Package className="w-4 h-4" />
           </button>
         </div>
-        <p className="text-center text-[10px] text-[#8B98A9]">
+
+        <p className="text-center text-[11px] text-[#8B98A9]">
           {listening ? "Listening… hold to speak" : started ? "Tap mic to continue" : "Tap mic to start"}
         </p>
-        <p className="text-center text-[10px] text-[#8B98A9]">
+        <p className="text-center text-[10px] text-[#8B98A9] font-mono">
           Gemini 3.8 Live · WebSocket wss://.../ws/live · &lt;1.5s latency
         </p>
       </div>

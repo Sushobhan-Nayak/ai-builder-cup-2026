@@ -584,7 +584,7 @@ export function SupplyChainMap({
   return (
     <div className={cn("relative w-full rounded-xl border border-[#243042] bg-[#080d16] overflow-hidden flex flex-col shadow-2xl", className)}>
       {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 bg-[#0c1322] border-b border-[#243042]">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 bg-[#0c1322] border-b border-[#243042] shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-md bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
             <Globe className="w-3.5 h-3.5 animate-spin-slow" />
@@ -670,7 +670,7 @@ export function SupplyChainMap({
       </div>
 
       {/* Main Map Canvas Area */}
-      <div className={cn("relative w-full bg-[#050912]", canvasHeight)}>
+      <div className={cn("relative w-full bg-[#050912] flex-1 min-h-0", canvasHeight)}>
         {/* VIEW 1: GEOSPATIAL MAP */}
         {viewMode === "geospatial" && (
           <>

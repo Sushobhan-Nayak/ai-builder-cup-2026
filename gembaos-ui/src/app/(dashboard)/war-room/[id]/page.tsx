@@ -1,4 +1,4 @@
-import WarRoom from "@/app/(dashboard)/war-room/page";
+import { WarRoomView } from "@/components/dashboard/war-room-view";
 
 export default async function WarRoomDetailPage({
   params,
@@ -6,5 +6,5 @@ export default async function WarRoomDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <WarRoom paramsDecisionId={id} />;
+  return <WarRoomView decisionId={id} />;
 }

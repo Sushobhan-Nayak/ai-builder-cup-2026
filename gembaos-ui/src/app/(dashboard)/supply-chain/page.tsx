@@ -113,13 +113,13 @@ export default function SupplyChain() {
 
       {/* 3. Main Workspace: Equal-Height Grid (Map + Disruptions + Blast Radius) */}
       <div className="grid grid-cols-12 gap-3 items-stretch">
-        {/* Map Panel on Left */}
-        <div className="col-span-12 lg:col-span-7 xl:col-span-8 flex flex-col">
-          <SupplyChainMap canvasHeight="h-[430px]" className="h-[475px]" />
+        {/* Map Panel on Left: Stretches to perfectly match the right action panels */}
+        <div className="col-span-12 lg:col-span-7 xl:col-span-8 flex flex-col h-full">
+          <SupplyChainMap canvasHeight="flex-1 min-h-[500px] h-full" className="flex-1 h-full min-h-[550px]" />
         </div>
 
-        {/* Right Action Panels: Perfectly Fills 475px to Match Map */}
-        <div className="col-span-12 lg:col-span-5 xl:col-span-4 h-[475px] flex flex-col justify-between gap-3">
+        {/* Right Action Panels: Natural equal height */}
+        <div className="col-span-12 lg:col-span-5 xl:col-span-4 flex flex-col justify-between gap-3 h-full">
           {/* Active Disruptions Panel */}
           <div className="rounded-xl bg-[#0c1322] border border-[#243042] p-3 shadow-lg flex-1 flex flex-col justify-between">
             <div>

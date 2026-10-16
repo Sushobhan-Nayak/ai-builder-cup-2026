@@ -2,7 +2,7 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import { CopilotDrawer } from "@/components/layout/copilot-drawer";
-import { DemoDirectorToolbar } from "@/components/layout/demo-director-toolbar";
+import { CopilotFab } from "@/components/layout/copilot-fab";
 import { useAppStore } from "@/store/app-store";
 import { Suspense, useEffect } from "react";
 
@@ -36,7 +36,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
       <CopilotDrawer />
-      <DemoDirectorToolbar />
+      <CopilotFab />
     </div>
   );
 }

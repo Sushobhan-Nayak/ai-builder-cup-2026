@@ -356,9 +356,9 @@ export default function AdminPage() {
   const [tab, setTab] = useState("policies");
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="p-4 space-y-3 pb-24">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold text-base-content">Admin & Governance</h1>
           <p className="text-xs text-base-content/40 mt-0.5">Autonomy policies · agent registry · traces · evaluations · connectors · users</p>
@@ -367,39 +367,62 @@ export default function AdminPage() {
           <span className="flex items-center gap-1.5 text-xs text-success">
             <Zap className="w-3.5 h-3.5" />All systems operational
           </span>
-          <button className="btn btn-error btn-outline btn-sm">Pause All Autonomy</button>
+          <button className="btn btn-error btn-outline btn-xs h-7">Pause All Autonomy</button>
         </div>
       </div>
 
-      {/* Summary stats */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { label: "Active Agents",    value: "10",    sub: "2 idle",         icon: Bot,       color: "text-primary" },
-          { label: "Decisions Today",  value: "38",    sub: "35 approved",    icon: CheckCircle, color: "text-success" },
-          { label: "Avg Latency",      value: "3.1s",  sub: "p95 across all", icon: Clock,     color: "text-base-content" },
-          { label: "Eval Pass Rate",   value: "85.7%", sub: "6/7 passing",    icon: BarChart2, color: "text-warning" },
-        ].map((s) => (
-          <Card key={s.label}>
-            <div className="flex items-center gap-3">
-              <s.icon className={cn("w-5 h-5 shrink-0", s.color)} />
-              <div>
-                <p className={cn("text-xl font-semibold tabular", s.color)}>{s.value}</p>
-                <p className="text-[10px] text-base-content/40 uppercase tracking-widest">{s.label}</p>
-                <p className="text-[11px] text-base-content/40">{s.sub}</p>
-              </div>
-            </div>
-          </Card>
-        ))}
+      {/* Compact Governance Runway Ticker */}
+      <div className="rounded-xl bg-[#0c1322] border border-[#243042] px-3 py-1.5 shadow-md flex items-center justify-between gap-3 overflow-hidden text-xs">
+        <div className="flex items-center gap-2 shrink-0 pr-2.5 border-r border-[#243042]">
+          <span className="text-[11px] font-bold text-[#E6EDF3] uppercase tracking-wider hidden sm:inline">
+            Governance
+          </span>
+          <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Operational
+          </span>
+        </div>
+
+        {/* Horizontal Ticker Chips */}
+        <div className="flex items-center gap-2 overflow-x-auto w-full scrollbar-none py-0.5">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-[#1e293b] bg-[#050912] text-[11px] shrink-0">
+            <Bot className="w-3.5 h-3.5 text-primary" />
+            <span className="text-[#8B98A9]">Active Agents:</span>
+            <span className="font-bold text-primary font-mono">10</span>
+            <span className="text-[10px] text-[#8B98A9] font-mono">(2 idle)</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-emerald-500/30 bg-emerald-950/20 text-[11px] shrink-0">
+            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-[#8B98A9]">Decisions Today:</span>
+            <span className="font-bold text-emerald-400 font-mono">38</span>
+            <span className="text-[10px] text-emerald-500 font-mono">35 approved</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-[#1e293b] bg-[#050912] text-[11px] shrink-0">
+            <Clock className="w-3.5 h-3.5 text-[#8B98A9]" />
+            <span className="text-[#8B98A9]">Avg Latency:</span>
+            <span className="font-bold text-[#E6EDF3] font-mono">3.1s</span>
+            <span className="text-[10px] text-[#8B98A9] font-mono">p95</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-amber-500/30 bg-amber-950/20 text-[11px] shrink-0">
+            <BarChart2 className="w-3.5 h-3.5 text-warning" />
+            <span className="text-[#8B98A9]">Eval Pass Rate:</span>
+            <span className="font-bold text-warning font-mono">85.7%</span>
+            <span className="text-[10px] text-amber-400/80 font-mono">6/7 passing</span>
+          </div>
+        </div>
       </div>
 
       {/* Tabs */}
-      <Card>
-        <div role="tablist" className="tabs tabs-border mb-5">
+      <Card className="p-3">
+        <div role="tablist" className="tabs tabs-border mb-3">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               role="tab"
-              className={cn("tab gap-2 text-sm", tab === id && "tab-active")}
+              className={cn("tab gap-1.5 text-xs h-8", tab === id && "tab-active")}
               onClick={() => setTab(id)}
             >
               <Icon className="w-3.5 h-3.5" />{label}
