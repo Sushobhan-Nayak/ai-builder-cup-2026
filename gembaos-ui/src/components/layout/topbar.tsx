@@ -1,8 +1,6 @@
 "use client";
 import {
   Bell,
-  Play,
-  Square,
   CheckCircle,
   XCircle,
   Scale,
@@ -329,12 +327,9 @@ export function TopBar() {
     setSelectedPlant,
     plants,
     setPlants,
-    simRunning,
-    setSimRunning,
     activeScenario,
     setActiveScenario,
   } = useAppStore();
-  const [simLoading, setSimLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
   const [demoMessage, setDemoMessage] = useState<string | null>(null);
 
@@ -384,31 +379,6 @@ export function TopBar() {
     }
   };
 
-  const handleToggleSim = async () => {
-    const nextState = !simRunning;
-    setSimLoading(true);
-    try {
-      if (nextState) {
-        // Trigger scenario at 60x speed multiplier per API specification
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "https://gembaos-gateway-100149412472.asia-southeast1.run.app"}/v1/demo/scenarios/bearing_failure_cnc07/start`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ speed_multiplier: 60 }),
-        });
-      } else {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "https://gembaos-gateway-100149412472.asia-southeast1.run.app"}/v1/demo/reset`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-    } catch (e) {
-      console.warn("Simulator toggle notice:", e);
-    } finally {
-      setSimRunning(nextState);
-      setSimLoading(false);
-    }
-  };
-
   return (
     <div className="navbar bg-[#0a0f1d] border-b border-[#1e293b]/80 min-h-12 h-13 px-4 py-1 gap-3 flex items-center justify-between select-none shadow-sm">
       {/* Left side: Plant switcher & Decision Inbox */}
@@ -432,11 +402,16 @@ export function TopBar() {
         <DecisionDropdown />
       </div>
 
-      {/* Middle: Integrated Demo Director & 60x Sim Controls */}
+      {/* Middle: Integrated Demo Director Controls */}
       <div className="flex items-center gap-1.5 bg-[#0c1424] border border-[#23334d] shadow-[0_2px_12px_rgba(0,0,0,0.4)] rounded-full px-2.5 py-1">
         <div className="flex items-center gap-1.5 font-bold text-cyan-400 text-[11px] px-2 py-0.5 rounded-full bg-cyan-950/40 border border-cyan-800/40 shrink-0 uppercase tracking-wider">
           <Sliders className="w-3 h-3 text-cyan-400 animate-pulse" />
           <span className="hidden sm:inline">Demo Director</span>
+          {activeScenario && (
+            <span className="text-[9px] font-mono px-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+              60×
+            </span>
+          )}
         </div>
 
         {/* Scenario 1: Bearing Fault */}
@@ -449,7 +424,7 @@ export function TopBar() {
               ? "bg-gradient-to-r from-red-600 to-rose-700 text-white font-semibold shadow-[0_0_12px_rgba(239,68,68,0.45)] border border-red-400"
               : "bg-[#181a24] text-red-300/90 border border-red-900/40 hover:bg-red-950/60 hover:border-red-500/50 hover:text-white"
           )}
-          title="Trigger Bearing Fault scenario on CNC-07"
+          title="Trigger Bearing Fault scenario on CNC-07 (60× sim speed)"
         >
           <AlertOctagon className="w-3 h-3 text-red-400" />
           <span className="hidden md:inline">Bearing Fault</span>
@@ -466,7 +441,7 @@ export function TopBar() {
               ? "bg-gradient-to-r from-amber-500 to-orange-600 text-slate-950 font-bold shadow-[0_0_12px_rgba(245,158,11,0.45)] border border-amber-300"
               : "bg-[#1c1a17] text-amber-300/90 border border-amber-900/40 hover:bg-amber-950/60 hover:border-amber-500/50 hover:text-white"
           )}
-          title="Trigger Typhoon Haikui-2 disruption"
+          title="Trigger Typhoon Haikui-2 disruption (60× sim speed)"
         >
           <CloudLightning className="w-3 h-3 text-amber-400" />
           <span>Typhoon Haikui-2</span>
@@ -481,34 +456,6 @@ export function TopBar() {
         >
           <RotateCcw className="w-3 h-3 text-cyan-400" />
           <span className="hidden lg:inline text-[11px] font-medium">Reset</span>
-        </button>
-
-        <div className="h-4 w-px bg-[#23334d] mx-0.5" />
-
-        {/* Sim control - Triggers 60x telemetry simulator */}
-        <button
-          disabled={simLoading}
-          onClick={handleToggleSim}
-          className={cn(
-            "h-7 px-3 gap-1.5 transition-all rounded-full text-xs font-medium flex items-center cursor-pointer",
-            simRunning
-              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)] animate-pulse"
-              : "bg-[#14233a] text-cyan-300 hover:text-cyan-100 hover:bg-[#1c3050] border border-cyan-700/50 shadow-sm"
-          )}
-          title={simRunning ? "Simulation running at 60× speed. Click to stop." : "Start simulated 60× live telemetry"}
-        >
-          {simRunning ? (
-            <>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block" />
-              <Square className="w-3 h-3" />
-              <span className="font-semibold">60× Live</span>
-            </>
-          ) : (
-            <>
-              <Play className="w-3 h-3 fill-cyan-400/40 text-cyan-400" />
-              <span>{simLoading ? "Updating…" : "Start Sim"}</span>
-            </>
-          )}
         </button>
 
         {demoMessage && (

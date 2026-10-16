@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/app-store";
 import type { PlantInfo } from "@/lib/api-client";
-import { Globe, MapPin, Sparkles, Navigation, Key, X, Check } from "lucide-react";
+import { Globe, MapPin, Sparkles, Navigation } from "lucide-react";
 
 // Geographic GPS coordinates
 const PLANT_COORDS: Record<string, { lat: number; lng: number; x: number; y: number; name: string }> = {
@@ -88,9 +88,6 @@ export function PlantMap({ plants, className }: PlantMapProps) {
   const [activeKey, setActiveKey] = useState<string>(
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || DEFAULT_MAPS_KEY
   );
-  const [keyInput, setKeyInput] = useState<string>("");
-  const [showKeyModal, setShowKeyModal] = useState(false);
-  const [keyError, setKeyError] = useState<string | null>(null);
 
   // 1. Initial key detection (localStorage -> build-time env -> runtime API -> project key)
   useEffect(() => {
@@ -138,7 +135,6 @@ export function PlantMap({ plants, className }: PlantMapProps) {
     // Catch Google Maps auth failures
     (window as any).gm_authFailure = () => {
       console.warn("Google Maps authentication failure. Falling back to Tactical Vector Map.");
-      setKeyError("Google Maps authentication error. Please verify your API key.");
       setMapEngine("vector");
     };
 
@@ -156,11 +152,9 @@ export function PlantMap({ plants, className }: PlantMapProps) {
     script.onload = () => {
       setGoogleMapsLoaded(true);
       setMapEngine("google");
-      setKeyError(null);
     };
     script.onerror = () => {
       console.warn("Google Maps JS API failed to load; using High-Fidelity Tactical Vector fallback.");
-      setKeyError("Failed to load Google Maps script. Check network or key restrictions.");
       setMapEngine("vector");
     };
     document.head.appendChild(script);
@@ -708,72 +702,6 @@ export function PlantMap({ plants, className }: PlantMapProps) {
           </button>
         </div>
       </div>
-
-      {/* Google Maps API Key Modal */}
-      {showKeyModal && (
-        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-base-200 border border-base-300 rounded-2xl p-5 max-w-md w-full shadow-2xl text-left">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 font-bold text-white text-sm">
-                <Key className="w-4 h-4 text-primary" />
-                <span>Connect Google Maps JavaScript API</span>
-              </div>
-              <button
-                onClick={() => setShowKeyModal(false)}
-                className="btn btn-ghost btn-xs btn-circle text-base-content/50 hover:text-base-content"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <p className="text-xs text-base-content/70 mt-2 leading-relaxed">
-              Enter your Google Cloud Maps JavaScript API Key below to activate satellite/street tactical night-mode tiles.
-            </p>
-
-            <div className="mt-3">
-              <input
-                type="text"
-                placeholder="AIzaSy..."
-                value={keyInput}
-                onChange={(e) => setKeyInput(e.target.value)}
-                className="input input-sm input-bordered w-full font-mono text-xs bg-base-300"
-              />
-            </div>
-
-            {keyError && (
-              <p className="text-[11px] text-error mt-2 font-mono">{keyError}</p>
-            )}
-
-            <div className="mt-4 flex items-center justify-between text-[11px]">
-              <span className="text-base-content/40 font-mono">
-                Tip: Can also set GOOGLE_MAPS_API_KEY in Cloud Run
-              </span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowKeyModal(false)}
-                  className="btn btn-ghost btn-xs"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    if (keyInput.trim()) {
-                      localStorage.setItem("GEMBAOS_MAPS_KEY", keyInput.trim());
-                      setActiveKey(keyInput.trim());
-                      setShowKeyModal(false);
-                    }
-                  }}
-                  disabled={!keyInput.trim()}
-                  className="btn btn-primary btn-xs text-white"
-                >
-                  <Check className="w-3 h-3" />
-                  Activate
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Bottom Tactical Legend & Telemetry Bar */}
       <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-[10px] text-base-content/60 bg-base-300/75 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 z-30 pointer-events-auto">

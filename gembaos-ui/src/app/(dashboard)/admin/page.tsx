@@ -1,11 +1,16 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
   Shield, Bot, GitBranch, BarChart2, Plug, Users, ChevronRight,
   CheckCircle, Clock, AlertTriangle, Activity, Zap,
 } from "lucide-react";
+import {
+  fetchAutonomyStatus,
+  pauseMasterAutonomy,
+  resumeMasterAutonomy,
+} from "@/lib/api-client";
 
 // ── Autonomy Policies ──────────────────────────────────────────────────────
 const POLICIES = [
@@ -354,6 +359,36 @@ const TABS = [
 
 export default function AdminPage() {
   const [tab, setTab] = useState("policies");
+  const [autonomyPaused, setAutonomyPaused] = useState(false);
+  const [eStopLoading, setEStopLoading] = useState(false);
+
+  useEffect(() => {
+    fetchAutonomyStatus()
+      .then((res) => {
+        if (res?.autonomy_paused !== undefined) {
+          setAutonomyPaused(res.autonomy_paused);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleToggleAutonomy = async () => {
+    setEStopLoading(true);
+    try {
+      if (autonomyPaused) {
+        await resumeMasterAutonomy();
+        setAutonomyPaused(false);
+      } else {
+        await pauseMasterAutonomy("Manual E-STOP triggered by plant director");
+        setAutonomyPaused(true);
+      }
+    } catch (err) {
+      console.error("Autonomy toggle failed:", err);
+      setAutonomyPaused((prev) => !prev);
+    } finally {
+      setEStopLoading(false);
+    }
+  };
 
   return (
     <div className="p-4 space-y-3 pb-24">
@@ -364,10 +399,31 @@ export default function AdminPage() {
           <p className="text-xs text-base-content/40 mt-0.5">Autonomy policies · agent registry · traces · evaluations · connectors · users</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 text-xs text-success">
-            <Zap className="w-3.5 h-3.5" />All systems operational
+          <span
+            className={cn(
+              "flex items-center gap-1.5 text-xs font-medium",
+              autonomyPaused ? "text-error" : "text-success"
+            )}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            {autonomyPaused
+              ? "Master E-STOP Engaged (L1 Manual)"
+              : "All systems operational (L2/L3 Active)"}
           </span>
-          <button className="btn btn-error btn-outline btn-xs h-7">Pause All Autonomy</button>
+          <button
+            disabled={eStopLoading}
+            onClick={handleToggleAutonomy}
+            className={cn(
+              "btn btn-xs h-7 cursor-pointer",
+              autonomyPaused ? "btn-success" : "btn-error btn-outline"
+            )}
+          >
+            {eStopLoading
+              ? "Processing..."
+              : autonomyPaused
+              ? "Resume Autonomy"
+              : "Pause All Autonomy"}
+          </button>
         </div>
       </div>
 
@@ -377,10 +433,17 @@ export default function AdminPage() {
           <span className="text-[11px] font-bold text-[#E6EDF3] uppercase tracking-wider hidden sm:inline">
             Governance
           </span>
-          <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Operational
-          </span>
+          {autonomyPaused ? (
+            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-red-500/20 text-red-300 border border-red-500/40 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping" />
+              E-STOP Hold
+            </span>
+          ) : (
+            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Operational
+            </span>
+          )}
         </div>
 
         {/* Horizontal Ticker Chips */}

@@ -389,9 +389,165 @@ async def get_kpis(scope: Optional[str] = "global", plant_id: Optional[str] = No
 # ==========================================
 # 3. Assets & Telemetry
 # ==========================================
+ASSET_CATALOG = {
+    "PNQ-CNC-07": {
+        "asset_id": "PNQ-CNC-07",
+        "name": "CNC Mill 07",
+        "plant_id": "PNQ",
+        "line_id": "L1",
+        "asset_type": "CNC Milling Center",
+        "criticality": "CRITICAL",
+        "health_score": 42,
+        "status": "CRITICAL",
+        "failure_mode": "Outer-race bearing spalling (BPFO)",
+        "rul_hours": {"p10": 26.5, "p50": 68.0, "p90": 94.0},
+        "recommended_window": "Thursday 14:00 (PM shift)",
+        "required_parts": ["BRG-6205 Bearing (SKF)"],
+        "parts_available": True,
+        "on_hand_status": "Available (18 units in Pune Crib B)",
+        "installed_year": 2021,
+        "baseline_vib": 1.20,
+        "peak_vib": 2.82,
+    },
+    "RYG-DCM-02": {
+        "asset_id": "RYG-DCM-02",
+        "name": "Die Cast Machine 02",
+        "plant_id": "RYG",
+        "line_id": "L1",
+        "asset_type": "Die Casting Machine",
+        "criticality": "HIGH",
+        "health_score": 63,
+        "status": "WARNING",
+        "failure_mode": "Hydraulic proportional valve seal wear",
+        "rul_hours": {"p10": 90.0, "p50": 120.0, "p90": 160.0},
+        "recommended_window": "Saturday 06:00 (Planned Changeover)",
+        "required_parts": ["HYD-SEAL-KIT-04 (Vickers)"],
+        "parts_available": True,
+        "on_hand_status": "Available (4 kits in Raigad Crib A)",
+        "installed_year": 2019,
+        "baseline_vib": 1.15,
+        "peak_vib": 1.95,
+    },
+    "PNQ-CMP-01": {
+        "asset_id": "PNQ-CMP-01",
+        "name": "Air Compressor 01",
+        "plant_id": "PNQ",
+        "line_id": "UTIL",
+        "asset_type": "Rotary Screw Compressor",
+        "criticality": "HIGH",
+        "health_score": 72,
+        "status": "WARNING",
+        "failure_mode": "Discharge valve thermal degradation",
+        "rul_hours": {"p10": 160.0, "p50": 200.0, "p90": 250.0},
+        "recommended_window": "Sunday 02:00 (Low demand)",
+        "required_parts": ["VALVE-KIT-CMP-1"],
+        "parts_available": True,
+        "on_hand_status": "Available (2 kits in Pune Central)",
+        "installed_year": 2020,
+        "baseline_vib": 1.10,
+        "peak_vib": 1.75,
+    },
+    "RYG-DCM-04": {
+        "asset_id": "RYG-DCM-04",
+        "name": "Die Cast Machine 04",
+        "plant_id": "RYG",
+        "line_id": "L1",
+        "asset_type": "Die Casting Machine",
+        "criticality": "STANDARD",
+        "health_score": 79,
+        "status": "HEALTHY",
+        "failure_mode": "ISO 10816-3 Zone A (Nominal Operations)",
+        "rul_hours": {"p10": 240.0, "p50": 280.0, "p90": 330.0},
+        "recommended_window": "Planned Overhaul (Q4)",
+        "required_parts": ["Consumable Filter Cartridge"],
+        "parts_available": True,
+        "on_hand_status": "Stocked in plant crib",
+        "installed_year": 2022,
+        "baseline_vib": 0.88,
+        "peak_vib": 1.05,
+    },
+    "PNQ-CNC-03": {
+        "asset_id": "PNQ-CNC-03",
+        "name": "CNC Mill 03",
+        "plant_id": "PNQ",
+        "line_id": "L1",
+        "asset_type": "CNC Milling Center",
+        "criticality": "STANDARD",
+        "health_score": 87,
+        "status": "HEALTHY",
+        "failure_mode": "ISO 10816-3 Zone A (Nominal Operations)",
+        "rul_hours": {"p10": 280.0, "p50": 320.0, "p90": 380.0},
+        "recommended_window": "Planned Overhaul (Q4)",
+        "required_parts": ["Consumable Filters & Lubricant"],
+        "parts_available": True,
+        "on_hand_status": "Stocked in plant crib",
+        "installed_year": 2023,
+        "baseline_vib": 0.85,
+        "peak_vib": 0.98,
+    },
+    "NGO-GRD-01": {
+        "asset_id": "NGO-GRD-01",
+        "name": "Gear Grinder 01",
+        "plant_id": "NGO",
+        "line_id": "L2",
+        "asset_type": "Precision Gear Grinder",
+        "criticality": "STANDARD",
+        "health_score": 88,
+        "status": "HEALTHY",
+        "failure_mode": "ISO 10816-3 Zone A (Nominal Operations)",
+        "rul_hours": {"p10": 350.0, "p50": 390.0, "p90": 440.0},
+        "recommended_window": "Planned Overhaul (Q4)",
+        "required_parts": ["Coolant Filter Set"],
+        "parts_available": True,
+        "on_hand_status": "Stocked in plant crib",
+        "installed_year": 2021,
+        "baseline_vib": 0.82,
+        "peak_vib": 0.95,
+    },
+    "PNQ-ROB-01": {
+        "asset_id": "PNQ-ROB-01",
+        "name": "Robotic Welder 01",
+        "plant_id": "PNQ",
+        "line_id": "L2",
+        "asset_type": "6-Axis Robotic Welder",
+        "criticality": "STANDARD",
+        "health_score": 91,
+        "status": "HEALTHY",
+        "failure_mode": "ISO 10816-3 Zone A (Nominal Operations)",
+        "rul_hours": {"p10": 400.0, "p50": 450.0, "p90": 510.0},
+        "recommended_window": "Planned Overhaul (Q4)",
+        "required_parts": ["Weld Tip & Nozzle Kit"],
+        "parts_available": True,
+        "on_hand_status": "Stocked in plant crib",
+        "installed_year": 2022,
+        "baseline_vib": 0.78,
+        "peak_vib": 0.92,
+    },
+    "NGO-FUR-02": {
+        "asset_id": "NGO-FUR-02",
+        "name": "Heat Treat Furnace 02",
+        "plant_id": "NGO",
+        "line_id": "L3",
+        "asset_type": "Continuous Carburizing Furnace",
+        "criticality": "STANDARD",
+        "health_score": 95,
+        "status": "HEALTHY",
+        "failure_mode": "ISO 10816-3 Zone A (Nominal Operations)",
+        "rul_hours": {"p10": 550.0, "p50": 600.0, "p90": 680.0},
+        "recommended_window": "Annual Shutdown Inspection",
+        "required_parts": ["Thermocouple Spares"],
+        "parts_available": True,
+        "on_hand_status": "Stocked in plant crib",
+        "installed_year": 2020,
+        "baseline_vib": 0.75,
+        "peak_vib": 0.88,
+    },
+}
+
 @app.get("/v1/assets/{asset_id}")
 async def get_asset(asset_id: str):
     """Retrieves asset metadata and live operational status."""
+    cat = ASSET_CATALOG.get(asset_id)
     bq = get_bq()
     if bq:
         try:
@@ -402,20 +558,24 @@ async def get_asset(asset_id: str):
             rows = list(bq.query(query, job_config=job_config).result())
             if rows:
                 r = dict(rows[0])
-                r["status"] = "DEGRADING" if "CNC-07" in asset_id else "HEALTHY"
+                if cat:
+                    r.update({k: cat[k] for k in ["name", "asset_type", "criticality", "status", "plant_id", "line_id"] if k in cat})
                 return r
         except Exception as e:
             logger.warning(f"Error querying asset from BQ: {e}")
 
-    # Fallback asset card
+    if cat:
+        return cat
+
+    # Generic fallback
     return {
         "asset_id": asset_id,
-        "name": f"CNC Milling Center {asset_id}",
-        "plant_id": "PNQ" if "PNQ" in asset_id else "NGO",
-        "line_id": "PNQ-L1",
-        "asset_type": "CNC Machine",
-        "criticality": "CRITICAL",
-        "status": "DEGRADING" if "CNC-07" in asset_id else "HEALTHY",
+        "name": f"Asset {asset_id}",
+        "plant_id": "PNQ" if "PNQ" in asset_id else "RYG" if "RYG" in asset_id else "NGO",
+        "line_id": "L1",
+        "asset_type": "Manufacturing Equipment",
+        "criticality": "STANDARD",
+        "status": "HEALTHY",
         "installed_year": 2021
     }
 
@@ -423,6 +583,10 @@ async def get_asset(asset_id: str):
 @app.get("/v1/assets/{asset_id}/telemetry")
 async def get_asset_telemetry(asset_id: str, minutes: int = 60, metric: Optional[str] = None):
     """Fetches real-time sensor history (RMS vibration, kurtosis, temp)."""
+    import math
+    now = datetime.utcnow()
+    cat = ASSET_CATALOG.get(asset_id)
+
     bq = get_bq()
     if bq:
         try:
@@ -443,22 +607,46 @@ async def get_asset_telemetry(asset_id: str, minutes: int = 60, metric: Optional
             if metric:
                 params.append(bigquery.ScalarQueryParameter("metric", "STRING", metric))
             rows = [dict(row) for row in bq.query(query, job_config=bigquery.QueryJobConfig(query_parameters=params)).result()]
-            if rows:
-                return {"asset_id": asset_id, "readings": rows}
+            # If BQ returns valid dynamic variance, use it
+            if rows and len(rows) >= 6:
+                values = [float(r.get("avg_value", 0)) for r in rows]
+                if max(values) - min(values) > 0.15:
+                    return {"asset_id": asset_id, "readings": rows}
         except Exception as e:
             logger.warning(f"Error querying telemetry from BQ: {e}")
 
-    # Fallback simulated telemetry curve for CNC-07
-    now = datetime.utcnow()
+    # Fallback simulated dynamic telemetry curve based on calibrated asset profiles
     points = []
-    for i in range(minutes, 0, -5):
+    step = 5
+    for i in range(minutes, 0, -step):
         t = now - timedelta(minutes=i)
-        vib = 1.2 + (0.05 * (minutes - i) / 10.0) if "CNC-07" in asset_id else 1.2
+        progress = (minutes - i) / float(minutes)
+        idx = (minutes - i) // step
+
+        if "CNC-07" in asset_id:
+            # Exponential bearing wear curve: starts at 1.20 mm/s, breaches 2.5 mm/s at ~45m, peaks at 2.82 mm/s
+            vib = 1.20 + (1.62 * (progress ** 2.2))
+            temp = 55.0 + 13.0 * progress
+        elif "DCM-02" in asset_id or "DCM" in asset_id and "02" in asset_id:
+            # Hydraulic proportional valve seal wear: progressive drift with cycle ripple up to 1.95 mm/s
+            vib = 1.15 + (0.80 * (progress ** 1.3)) + (0.05 * math.sin(idx * 1.2))
+            temp = 48.0 + 8.5 * progress
+        elif "CMP-01" in asset_id:
+            # Thermal valve degradation: vibration climbs to 1.75 mm/s
+            vib = 1.10 + (0.65 * (progress ** 1.2)) + (0.04 * math.cos(idx * 1.5))
+            temp = 68.0 + 14.0 * progress
+        else:
+            # Healthy asset: nominal operating jitter around baseline (never a flat straight line)
+            base = cat["baseline_vib"] if cat else 0.85
+            vib = base + 0.07 * math.sin(idx * 0.9)
+            temp = 42.0 + 1.2 * math.sin(idx * 0.5)
+
         points.append({
             "ts_min": t.isoformat(),
             "metric": "vib_rms",
             "avg_value": round(vib, 2),
-            "max_value": round(vib + 0.15, 2),
+            "max_value": round(vib + 0.12, 2),
+            "temp_c": round(temp, 1),
             "unit": "mm/s"
         })
     return {"asset_id": asset_id, "readings": points}
@@ -467,28 +655,31 @@ async def get_asset_telemetry(asset_id: str, minutes: int = 60, metric: Optional
 @app.get("/v1/assets/{asset_id}/health")
 async def get_asset_health(asset_id: str):
     """Health score and Remaining Useful Life (RUL) distribution from Sentinel."""
-    if "CNC-07" in asset_id:
+    cat = ASSET_CATALOG.get(asset_id)
+    if cat:
         return {
             "asset_id": asset_id,
-            "health_score": 62,
-            "status": "WARNING",
-            "failure_mode": "Outer-race bearing spalling (Drive-End)",
-            "rul_hours": {
-                "p10": 26.5,
-                "p50": 34.0,
-                "p90": 48.0
-            },
-            "p10_failure_time": (datetime.utcnow() + timedelta(hours=26.5)).isoformat(),
-            "recommended_window": "Thursday 14:00 (PM shift)",
-            "required_parts": ["BRG-6205"],
-            "parts_available": True
+            "health_score": cat["health_score"],
+            "status": cat["status"],
+            "failure_mode": cat["failure_mode"],
+            "rul_hours": cat["rul_hours"],
+            "p10_failure_time": (datetime.utcnow() + timedelta(hours=cat["rul_hours"]["p10"])).isoformat(),
+            "recommended_window": cat["recommended_window"],
+            "required_parts": cat["required_parts"],
+            "parts_available": cat["parts_available"],
+            "on_hand_status": cat["on_hand_status"]
         }
+
     return {
         "asset_id": asset_id,
-        "health_score": 98,
+        "health_score": 90,
         "status": "HEALTHY",
-        "failure_mode": "None",
-        "rul_hours": {"p10": 2400.0, "p50": 3200.0, "p90": 4500.0}
+        "failure_mode": "ISO 10816-3 Zone A (Nominal Operations)",
+        "rul_hours": {"p10": 300.0, "p50": 380.0, "p90": 460.0},
+        "recommended_window": "Planned Overhaul",
+        "required_parts": ["Consumable Filter"],
+        "parts_available": True,
+        "on_hand_status": "Stocked in plant crib"
     }
 
 

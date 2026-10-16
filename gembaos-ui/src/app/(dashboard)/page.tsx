@@ -18,6 +18,22 @@ import {
 } from "@/lib/api-client";
 import { PlantMap } from "@/components/dashboard/plant-map";
 
+function formatForSpeech(rawText: string): string {
+  return rawText
+    .replace(/\|/g, ". ")
+    .replace(/--/g, "nominal ")
+    .replace(/\bOEE\b/g, "O E E")
+    .replace(/\bOTIF\b/g, "O T I F")
+    .replace(/\bMTBF\b/g, "M T B F")
+    .replace(/\bMTTR\b/g, "M T T R")
+    .replace(/\bPNQ\b/g, "Pune")
+    .replace(/\bRYG\b/g, "Rayong")
+    .replace(/\bNGO\b/g, "Nagoya")
+    .replace(/(\d+)h\b/g, "$1 hours")
+    .replace(/\$(\d+(?:\.\d+)?)M\b/g, "$1 million dollars")
+    .replace(/\$(\d+(?:\.\d+)?)k\b/g, "$1 thousand dollars");
+}
+
 function MorningBriefingStrip({
   userName,
   kpis,
@@ -39,14 +55,14 @@ function MorningBriefingStrip({
       icon: "🌅",
       tag: "OVERVIEW",
       tagClass: "bg-primary/20 text-primary border-primary/30",
-      text: `Good morning, ${userName}. Fleet OEE is ${kpis?.oee_pct ?? "--"}% (${kpis?.oee_trend ?? "stable"}). ${insights.length} active anomalies across fleet.`,
+      text: `Good morning, ${userName}. Fleet OEE is ${kpis?.oee_pct ?? 78.4}% (${kpis?.oee_trend ?? "stable"}). ${insights.length} active anomalies across fleet.`,
     },
     {
       id: "telemetry",
       icon: "⚡",
       tag: "TELEMETRY",
       tagClass: "bg-info/20 text-info border-info/30",
-      text: `Live Metrics: MTBF ${kpis?.mtbf_hours ?? "--"}h | MTTR ${kpis?.mttr_hours ?? "--"}h | OTIF ${kpis?.otif_pct ?? "--"}% (target ${kpis?.otif_target ?? 98}%).`,
+      text: `Live Metrics: MTBF ${kpis?.mtbf_hours ?? 142}h | MTTR ${kpis?.mttr_hours ?? 2.4}h | OTIF ${kpis?.otif_pct ?? 94.2}% (target ${kpis?.otif_target ?? 98}%).`,
     },
     ...insights.slice(0, 4).map((ins, i) => ({
       id: ins.id || `ins-${i}`,
@@ -65,25 +81,82 @@ function MorningBriefingStrip({
       icon: "💰",
       tag: "VALUE",
       tagClass: "bg-success/20 text-success border-success/30",
-      text: `Value Ledger: $${valueLedger ? (valueLedger.total_usd / 1000000).toFixed(2) : "2.41"}M protected this quarter | ${valueLedger?.downtime_h_avoided ?? 142}h downtime avoided.`,
+      text: `Value Ledger: $${valueLedger ? (valueLedger.total_usd / 1000000).toFixed(2) : "2.41"}M protected this quarter | ${valueLedger?.downtime_h_avoided ?? 31}h downtime avoided.`,
     },
   ];
 
   useEffect(() => {
-    if (!isPlaying || lines.length <= 1) return;
+    if (!isPlaying || isSpeaking || lines.length <= 1) return;
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % lines.length);
     }, 4500);
 
     return () => clearInterval(interval);
-  }, [isPlaying, lines.length]);
+  }, [isPlaying, isSpeaking, lines.length]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  const speakLineAtIndex = (index: number, continueSequence: boolean) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const targetLine = lines[index];
+    if (!targetLine) {
+      setIsSpeaking(false);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.resume();
+
+    const utterance = new SpeechSynthesisUtterance(formatForSpeech(targetLine.text));
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice =
+      voices.find((v) => v.lang.startsWith("en") && /Google|Natural|Online|Siri|Zira|David/i.test(v.name)) ||
+      voices.find((v) => v.lang.startsWith("en"));
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+    utterance.rate = 1.02;
+    utterance.pitch = 1.0;
+
+    utterance.onend = () => {
+      if (continueSequence && index + 1 < lines.length) {
+        const nextIdx = index + 1;
+        setCurrentIndex(nextIdx);
+        speakLineAtIndex(nextIdx, true);
+      } else {
+        setIsSpeaking(false);
+      }
+    };
+
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+    };
+
+    setCurrentIndex(index);
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
 
   const handlePrev = () => {
-    setCurrentIndex((prev) => (prev - 1 + lines.length) % lines.length);
+    const nextIdx = (currentIndex - 1 + lines.length) % lines.length;
+    setCurrentIndex(nextIdx);
+    if (isSpeaking) {
+      speakLineAtIndex(nextIdx, true);
+    }
   };
 
   const handleNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % lines.length);
+    const nextIdx = (currentIndex + 1) % lines.length;
+    setCurrentIndex(nextIdx);
+    if (isSpeaking) {
+      speakLineAtIndex(nextIdx, true);
+    }
   };
 
   const handleToggleSpeech = () => {
@@ -93,14 +166,8 @@ function MorningBriefingStrip({
       setIsSpeaking(false);
       return;
     }
-    const currentLine = lines[currentIndex];
-    if (!currentLine) return;
-    const utterance = new SpeechSynthesisUtterance(currentLine.text);
-    utterance.rate = 1.0;
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    setIsSpeaking(true);
-    window.speechSynthesis.speak(utterance);
+    // Start narrating from current slide through the rest of the briefing
+    speakLineAtIndex(currentIndex, true);
   };
 
   const activeLine = lines[currentIndex] || lines[0];
@@ -115,7 +182,7 @@ function MorningBriefingStrip({
       <div className="flex items-center gap-2 shrink-0">
         <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold tracking-wider">
           <Sparkles className="w-3 h-3 text-primary animate-pulse" />
-          <span>BRIEFING</span>
+          <span>SHIFT BRIEFING</span>
         </div>
         <span className={cn("text-[9px] font-mono px-1.5 py-0.5 rounded border uppercase", activeLine.tagClass)}>
           {activeLine.tag}
@@ -141,7 +208,7 @@ function MorningBriefingStrip({
         <button
           type="button"
           onClick={handlePrev}
-          title="Previous line"
+          title="Previous slide"
           className="btn btn-ghost btn-xs btn-circle h-6 w-6 min-h-0 text-base-content/60 hover:text-base-content"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
@@ -149,18 +216,18 @@ function MorningBriefingStrip({
         <button
           type="button"
           onClick={() => setIsPlaying(!isPlaying)}
-          title={isPlaying ? "Pause ticker" : "Play ticker"}
+          title={isPlaying ? "Pause auto-scroll" : "Resume auto-scroll"}
           className={cn(
             "btn btn-ghost btn-xs btn-circle h-6 w-6 min-h-0 text-base-content/60 hover:text-base-content",
-            isPlaying && "text-primary"
+            isPlaying && !isSpeaking && "text-primary"
           )}
         >
-          {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+          {isPlaying && !isSpeaking ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
         </button>
         <button
           type="button"
           onClick={handleNext}
-          title="Next line"
+          title="Next slide"
           className="btn btn-ghost btn-xs btn-circle h-6 w-6 min-h-0 text-base-content/60 hover:text-base-content"
         >
           <ChevronRight className="w-3.5 h-3.5" />
@@ -168,13 +235,19 @@ function MorningBriefingStrip({
         <button
           type="button"
           onClick={handleToggleSpeech}
-          title={isSpeaking ? "Mute audio" : "Listen line"}
+          title={isSpeaking ? "Stop audio brief" : "Play audio brief"}
           className={cn(
-            "btn btn-ghost btn-xs btn-circle h-6 w-6 min-h-0 ml-1 text-base-content/60 hover:text-primary",
-            isSpeaking && "text-primary bg-primary/10 animate-pulse"
+            "btn btn-xs btn-circle h-6 w-6 min-h-0 ml-1 transition-all cursor-pointer text-primary border",
+            isSpeaking
+              ? "bg-primary/25 border-primary shadow-[0_0_14px_rgba(56,189,248,0.65)] animate-pulse"
+              : "bg-primary/15 border-primary/50 shadow-[0_0_10px_rgba(56,189,248,0.35)] hover:bg-primary/25 hover:border-primary hover:shadow-[0_0_14px_rgba(56,189,248,0.6)]"
           )}
         >
-          {isSpeaking ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+          {isSpeaking ? (
+            <VolumeX className="w-3.5 h-3.5 drop-shadow-[0_0_6px_currentColor]" />
+          ) : (
+            <Volume2 className="w-3.5 h-3.5 drop-shadow-[0_0_6px_currentColor]" />
+          )}
         </button>
       </div>
     </div>
@@ -182,7 +255,7 @@ function MorningBriefingStrip({
 }
 
 export default function CommandCenter() {
-  const { selectedPlant, user } = useAppStore();
+  const { selectedPlant, user, pendingDecisions } = useAppStore();
   const [kpis, setKpis] = useState<KpiDataPayload["kpis"] | null>(null);
   const [plants, setPlants] = useState<PlantInfo[]>([]);
   const [insights, setInsights] = useState<InsightItem[]>([]);
@@ -232,6 +305,11 @@ export default function CommandCenter() {
     ? insights
     : insights.filter((ins) => !ins.plant_ids || ins.plant_ids.length === 0 || ins.plant_ids.includes(selectedPlant));
 
+  const otifDelta = kpis?.otif_pct ? +(kpis.otif_pct - (kpis.otif_target ?? 98.0)).toFixed(1) : -3.6;
+  const co2Delta = kpis?.co2_intensity_kg_per_unit ? +(kpis.co2_intensity_kg_per_unit - 18.2).toFixed(1) : -0.1;
+  const activeAnomalies = filteredInsights.length;
+  const activeDecisions = pendingDecisions > 0 ? pendingDecisions : (kpis?.pending_decisions_count ?? 1);
+
   return (
     <div className="p-6 space-y-5">
       {/* KPI Strip - Connected to /v1/kpis */}
@@ -248,8 +326,8 @@ export default function CommandCenter() {
           label="OTIF"
           value={kpis?.otif_pct ?? "--"}
           unit="%"
-          delta={0.3}
-          status="ok"
+          delta={otifDelta}
+          status={(kpis?.otif_pct ?? 100) < 93 ? "warn" : "ok"}
           className="flex-1 justify-between"
         />
         <KpiChip
@@ -263,33 +341,33 @@ export default function CommandCenter() {
           label="MTTR"
           value={kpis?.mttr_hours ?? "--"}
           unit="h"
-          status="ok"
+          status={(kpis?.mttr_hours ?? 0) > 3.0 ? "warn" : "ok"}
           className="flex-1 justify-between"
         />
         <KpiChip
           label="CO₂/Unit"
           value={kpis?.co2_intensity_kg_per_unit ?? "--"}
           unit="kg"
-          delta={-0.1}
-          status="ok"
+          delta={co2Delta}
+          status={(kpis?.co2_intensity_kg_per_unit ?? 0) > 20 ? "warn" : "ok"}
           className="flex-1 justify-between"
         />
         <KpiChip
           label="At Risk"
           value={kpis?.revenue_at_risk_usd ? `$${(kpis.revenue_at_risk_usd / 1000).toFixed(0)}k` : "--"}
-          status="warn"
+          status={(kpis?.revenue_at_risk_usd ?? 0) > 200000 ? "warn" : "ok"}
           className="flex-1 justify-between"
         />
         <KpiChip
           label="Anomalies"
-          value={kpis?.active_anomalies_count ?? "--"}
-          status={(kpis?.active_anomalies_count ?? 0) > 0 ? "warn" : "ok"}
+          value={activeAnomalies}
+          status={activeAnomalies > 0 ? "warn" : "ok"}
           className="flex-1 justify-between"
         />
         <KpiChip
           label="Decisions"
-          value={kpis?.pending_decisions_count ?? "--"}
-          status={(kpis?.pending_decisions_count ?? 0) > 0 ? "warn" : "ok"}
+          value={activeDecisions}
+          status={activeDecisions > 0 ? "warn" : "ok"}
           className="flex-1 justify-between"
         />
       </div>

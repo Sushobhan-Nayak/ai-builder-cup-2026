@@ -65,7 +65,7 @@ body {
   100% { transform: translateY(-50%); }
 }
 .animate-vertical-scroll {
-  animation: vertical-scroll 75s linear infinite;
+  animation: vertical-scroll 48s linear infinite;
 }
 .animate-vertical-scroll:hover {
   animation-play-state: paused;

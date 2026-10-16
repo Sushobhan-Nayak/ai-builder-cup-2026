@@ -5,7 +5,9 @@ const variants: Record<string, string> = {
   scenario: "badge badge-warning badge-outline",
   ok:       "badge badge-success badge-outline",
   warn:     "badge badge-warning badge-outline",
+  high:     "badge badge-warning badge-outline",
   crit:     "badge badge-error badge-outline",
+  critical: "badge badge-error badge-outline",
   info:     "badge badge-info badge-outline",
 };
 

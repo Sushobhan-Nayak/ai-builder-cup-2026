@@ -522,10 +522,69 @@ export async function postInspection(formData: FormData) {
 }
 
 // -------------------------------------------------------------
+// 6b. Demand Sensing & S&OP (Oracle Agent)
+// -------------------------------------------------------------
+
+export async function fetchDemandForecast(sku = "TM-300", plantId?: string) {
+  const query = new URLSearchParams({ sku });
+  if (plantId && plantId !== "ALL") query.set("plant_id", plantId);
+
+  return fetchWithFallback(
+    `${API_BASE_URL}/v1/demand/forecast?${query.toString()}`,
+    {},
+    {
+      sku,
+      plant_id: plantId || "GLOBAL",
+      model: "TimesFM-2.5",
+      horizon_days: 30,
+      series: Array.from({ length: 30 }, (_, i) => {
+        const base = (plantId === "RYG" ? 3600 : plantId === "NGO" ? 4800 : 4200) + Math.sin(i * 0.15) * 350 + i * 8;
+        return {
+          day: `D+${i}`,
+          forecast: Math.round(base),
+          lower: Math.round(base * 0.88),
+          upper: Math.round(base * 1.12),
+          actual: i < 7 ? Math.round(base + Math.sin(i) * 110) : null,
+        };
+      }),
+    }
+  );
+}
+
+export async function fetchDemandAdjustments(plantId?: string) {
+  const query = plantId && plantId !== "ALL" ? `?plant_id=${encodeURIComponent(plantId)}` : "";
+  return fetchWithFallback(
+    `${API_BASE_URL}/v1/demand/adjustments${query}`,
+    {},
+    {
+      adjustments: [
+        { id: "adj-1", sku: "TM-300", customer: "Zenith Motors", adj: "+8%", reason: "EV subsidy extended (India PLI)", expires: "Nov–Dec", status: "pending", plant_id: "PNQ" },
+        { id: "adj-2", sku: "GBX-100", customer: "Kirin Mobility", adj: "+5%", reason: "New model launch Q4", expires: "Dec", status: "accepted", plant_id: "NGO" },
+        { id: "adj-3", sku: "HSG-220", customer: "Arka EV", adj: "−3%", reason: "Competitor recall — demand shift", expires: "Oct", status: "pending", plant_id: "RYG" },
+      ],
+    }
+  );
+}
+
+export async function updateDemandAdjustment(adjId: string, status: "accepted" | "rejected") {
+  return fetchWithFallback(
+    `${API_BASE_URL}/v1/demand/adjustments/${encodeURIComponent(adjId)}`,
+    {
+      method: "POST",
+      body: JSON.stringify({ status }),
+    },
+    { adjustment_id: adjId, status }
+  );
+}
+
+// -------------------------------------------------------------
 // 7. Demo Director Scenarios
 // -------------------------------------------------------------
 
-export async function triggerDemoScenario(scenarioKey: string, payload: Record<string, any> = {}) {
+export async function triggerDemoScenario(
+  scenarioKey: string,
+  payload: Record<string, any> = { speed_multiplier: 60 }
+) {
   return fetchWithFallback(
     `${API_BASE_URL}/v1/demo/scenarios/${encodeURIComponent(scenarioKey)}/start`,
     {
@@ -676,3 +735,222 @@ export async function draftPo(payload: {
     }
   );
 }
+
+// -------------------------------------------------------------
+// 10. Work Orders (CMMS & Sentinel)
+// -------------------------------------------------------------
+export async function scheduleWorkOrder(payload: {
+  asset_id: string;
+  maintenance_window?: string;
+  priority?: string;
+  required_part?: string;
+  assigned_technician?: string;
+  reason?: string;
+}) {
+  return fetchWithFallback<{
+    status: string;
+    work_order_id: string;
+    asset_id: string;
+    maintenance_window: string;
+    message: string;
+  }>(
+    `${API_BASE_URL}/v1/assets/${encodeURIComponent(payload.asset_id)}/work-order`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+    {
+      status: "SCHEDULED",
+      work_order_id: `WO-${Date.now().toString().slice(-6)}`,
+      asset_id: payload.asset_id,
+      maintenance_window: payload.maintenance_window || "Thursday 14:00 (PM shift)",
+      message: "Work order staged in CMMS with LOTO safety protocol.",
+    }
+  );
+}
+
+// -------------------------------------------------------------
+// 11. Quality Studio: Feedback & 8D Report
+// -------------------------------------------------------------
+export async function submitInspectionFeedback(
+  inspectionId: string,
+  label: "correct" | "wrong",
+  notes?: string
+) {
+  return fetchWithFallback(
+    `${API_BASE_URL}/v1/inspections/${encodeURIComponent(inspectionId)}/feedback`,
+    {
+      method: "POST",
+      body: JSON.stringify({ human_label: label, notes }),
+    },
+    { status: "RECORDED", inspection_id: inspectionId, human_label: label }
+  );
+}
+
+export async function generate8DReport(lotId = "L-4471", sku = "HSG-220") {
+  return fetchWithFallback<{
+    status: string;
+    report_id: string;
+    lot_id: string;
+    sku: string;
+    sections: Array<{ d: string; title: string; content: string }>;
+  }>(
+    `${API_BASE_URL}/v1/quality/8d-report`,
+    {
+      method: "POST",
+      body: JSON.stringify({ lot_id: lotId, sku }),
+    },
+    {
+      status: "GENERATED",
+      report_id: `8D-2026-${lotId}`,
+      lot_id: lotId,
+      sku: sku,
+      sections: [],
+    }
+  );
+}
+
+// -------------------------------------------------------------
+// 12. War Room Deliberation Ingress
+// -------------------------------------------------------------
+export async function triggerWarRoomDeliberation(
+  decisionId = "dec_001",
+  scenario = "typhoon_hsinchu"
+) {
+  return fetchWithFallback(
+    `${API_BASE_URL}/v1/war-room/start`,
+    {
+      method: "POST",
+      body: JSON.stringify({ decision_id: decisionId, scenario }),
+    },
+    { status: "ACTIVE", deliberation_id: `dlb_${decisionId}` }
+  );
+}
+
+// -------------------------------------------------------------
+// 13. Demand Sensing & S&OP
+// -------------------------------------------------------------
+export async function overrideForecast(payload: {
+  sku: string;
+  customer: string;
+  adjustment: string;
+  action: "accept" | "reject";
+  reason?: string;
+}) {
+  return fetchWithFallback(
+    `${API_BASE_URL}/v1/demand/forecast-override`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+    { status: "APPLIED", sku: payload.sku, action: payload.action }
+  );
+}
+
+export async function fetchSopPreread(month = "Nov 2026") {
+  return fetchWithFallback<{
+    status: string;
+    document_id: string;
+    period?: string;
+    executive_summary?: string;
+  }>(
+    `${API_BASE_URL}/v1/demand/sop-preread`,
+    {
+      method: "POST",
+      body: JSON.stringify({ month }),
+    },
+    { status: "GENERATED", document_id: "SOP-2026-11-PREREAD" }
+  );
+}
+
+// -------------------------------------------------------------
+// 14. Sustainability: Load-Shift & ESG Reporting
+// -------------------------------------------------------------
+export async function approveLoadShiftSchedule(payload: {
+  plant_id: string;
+  process?: string;
+  window?: string;
+}) {
+  return fetchWithFallback<{
+    status: string;
+    dispatch_id: string;
+    savings_usd_monthly: number;
+    co2_avoided_tons_monthly: number;
+  }>(
+    `${API_BASE_URL}/v1/sustainability/approve-loadshift`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+    {
+      status: "APPROVED",
+      dispatch_id: `LS-${payload.plant_id}-01`,
+      savings_usd_monthly: 3100,
+      co2_avoided_tons_monthly: 4.6,
+    }
+  );
+}
+
+export async function generateEsgReport(
+  standard = "GRI-305",
+  period = "October 2026"
+) {
+  return fetchWithFallback<{
+    status: string;
+    report_id: string;
+    total_tco2e: number;
+  }>(
+    `${API_BASE_URL}/v1/sustainability/esg-report`,
+    {
+      method: "POST",
+      body: JSON.stringify({ standard, period }),
+    },
+    { status: "DRAFTED", report_id: "GRI-305-OCT-2026", total_tco2e: 142.0 }
+  );
+}
+
+// -------------------------------------------------------------
+// 15. Admin Autonomy Master E-STOP
+// -------------------------------------------------------------
+export async function fetchAutonomyStatus() {
+  return fetchWithFallback<{
+    autonomy_paused: boolean;
+    mode: string;
+    active_level?: string;
+  }>(
+    `${API_BASE_URL}/v1/admin/autonomy/status`,
+    {},
+    { autonomy_paused: false, mode: "OPERATIONAL" }
+  );
+}
+
+export async function pauseMasterAutonomy(reason?: string) {
+  return fetchWithFallback<{
+    status: string;
+    autonomy_paused: boolean;
+    message?: string;
+  }>(
+    `${API_BASE_URL}/v1/admin/autonomy/pause`,
+    {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    },
+    { status: "PAUSED", autonomy_paused: true }
+  );
+}
+
+export async function resumeMasterAutonomy() {
+  return fetchWithFallback<{
+    status: string;
+    autonomy_paused: boolean;
+    message?: string;
+  }>(
+    `${API_BASE_URL}/v1/admin/autonomy/resume`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+    },
+    { status: "RESUMED", autonomy_paused: false }
+  );
+}
+

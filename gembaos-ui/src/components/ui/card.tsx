@@ -2,15 +2,16 @@ import { cn } from "@/lib/utils";
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   glow?: boolean;
+  bodyClassName?: string;
 }
 
-export function Card({ className, glow, children, ...props }: CardProps) {
+export function Card({ className, glow, bodyClassName, children, ...props }: CardProps) {
   return (
     <div
       className={cn("card bg-base-200 shadow-sm", glow && "ring-1 ring-primary/20", className)}
       {...props}
     >
-      <div className="card-body p-5">{children}</div>
+      <div className={cn("card-body p-5", bodyClassName)}>{children}</div>
     </div>
   );
 }

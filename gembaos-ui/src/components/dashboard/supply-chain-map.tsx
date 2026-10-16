@@ -7,9 +7,7 @@ import {
   MapPin,
   Sparkles,
   Navigation,
-  Key,
   X,
-  Check,
   AlertTriangle,
   Anchor,
   Factory,
@@ -318,9 +316,6 @@ export function SupplyChainMap({
   const [activeKey, setActiveKey] = useState<string>(
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || DEFAULT_MAPS_KEY
   );
-  const [keyInput, setKeyInput] = useState<string>("");
-  const [showKeyModal, setShowKeyModal] = useState(false);
-  const [keyError, setKeyError] = useState<string | null>(null);
 
   // 1. Detect API Key (localStorage -> build-time env -> runtime API -> project key)
   useEffect(() => {
@@ -364,7 +359,6 @@ export function SupplyChainMap({
 
     (window as any).gm_authFailure = () => {
       console.warn("Google Maps auth failed. Using High-Fidelity Tactical Vector fallback.");
-      setKeyError("Google Maps auth failed. Check API key restrictions.");
       setMapEngine("vector");
     };
 
@@ -379,10 +373,9 @@ export function SupplyChainMap({
       script.onload = () => {
         setGoogleMapsLoaded(true);
         setMapEngine("google");
-        setKeyError(null);
       };
       script.onerror = () => {
-        setKeyError("Failed to load Google Maps SDK.");
+        console.warn("Failed to load Google Maps SDK; falling back to vector engine.");
         setMapEngine("vector");
       };
       document.head.appendChild(script);
@@ -566,21 +559,6 @@ export function SupplyChainMap({
     }
   }, [viewMode, mapEngine, googleMapsLoaded, activeLaneFilter]);
 
-  const saveCustomKey = (key: string) => {
-    const trimmed = key.trim();
-    if (!trimmed) {
-      localStorage.removeItem("GEMBAOS_MAPS_KEY");
-      setActiveKey("");
-      setShowKeyModal(false);
-      setMapEngine("vector");
-      return;
-    }
-    localStorage.setItem("GEMBAOS_MAPS_KEY", trimmed);
-    setActiveKey(trimmed);
-    setKeyError(null);
-    setShowKeyModal(false);
-  };
-
   return (
     <div className={cn("relative w-full rounded-xl border border-[#243042] bg-[#080d16] overflow-hidden flex flex-col shadow-2xl", className)}>
       {/* Header Bar */}
@@ -651,21 +629,6 @@ export function SupplyChainMap({
               Alternate
             </button>
           </div>
-
-          {/* Key status */}
-          <button
-            onClick={() => {
-              setKeyInput(activeKey);
-              setShowKeyModal(true);
-            }}
-            className="px-2.5 py-1 rounded-lg bg-[#121c2e] hover:bg-[#1a273e] border border-[#243042] text-[11px] font-medium text-[#8B98A9] hover:text-[#E6EDF3] transition-colors flex items-center gap-1.5"
-            title="Google Maps API Key configuration"
-          >
-            <Key className="w-3 h-3 text-primary" />
-            <span className="hidden md:inline">Google Maps:</span>
-            <span className={cn("w-1.5 h-1.5 rounded-full", mapEngine === "google" ? "bg-emerald-400 animate-pulse" : "bg-amber-400")} />
-            <span>{mapEngine === "google" ? "Live" : "Vector Twin"}</span>
-          </button>
         </div>
       </div>
 
@@ -970,57 +933,6 @@ export function SupplyChainMap({
           </div>
         </div>
       </div>
-
-      {/* Google Maps API Key Modal */}
-      {showKeyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-[#0e1626] border border-[#243042] rounded-xl max-w-md w-full p-5 shadow-2xl text-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-[#243042] pb-3">
-              <div className="flex items-center gap-2 text-[#E6EDF3] font-semibold text-sm">
-                <Key className="w-4 h-4 text-primary" />
-                <span>Google Maps Configuration</span>
-              </div>
-              <button onClick={() => setShowKeyModal(false)} className="text-[#8B98A9] hover:text-white">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <p className="text-[#8B98A9] leading-relaxed">
-              Google Maps API keys are domain-wide. Once entered, the key applies across the Command Center, Supply Chain Control Tower, and all geospatial modules.
-            </p>
-
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-medium text-[#E6EDF3]">Maps JavaScript API Key</label>
-              <input
-                type="text"
-                placeholder="AIzaSy..."
-                value={keyInput}
-                onChange={(e) => setKeyInput(e.target.value)}
-                className="w-full bg-[#050912] border border-[#243042] rounded-lg px-3 py-2 text-xs text-[#E6EDF3] font-mono focus:outline-hidden focus:border-primary"
-              />
-            </div>
-
-            {keyError && <p className="text-red-400 text-[11px]">{keyError}</p>}
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#243042]">
-              <button
-                type="button"
-                onClick={() => saveCustomKey("")}
-                className="px-3 py-1.5 rounded-lg border border-[#243042] text-[#8B98A9] hover:text-white hover:bg-[#1a273e]"
-              >
-                Clear / Reset
-              </button>
-              <button
-                type="button"
-                onClick={() => saveCustomKey(keyInput)}
-                className="px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground font-semibold flex items-center gap-1.5 hover:opacity-90"
-              >
-                <Check className="w-3.5 h-3.5" /> Save & Connect
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
